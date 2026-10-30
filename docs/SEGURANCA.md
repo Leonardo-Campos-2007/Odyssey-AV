@@ -1,21 +1,39 @@
 # SEGURANCA.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 1.0  
+**Versão:** 2.0  
 **Escopo:** MVP  
-**Status:** Primeira versão
+**Status:** Consolidado para revisão
 
 ---
 
 # 1. Objetivo
 
-Este documento define os princípios e controles básicos de segurança do Odyssey AV.
+Este documento define os princípios, ameaças e controles de segurança do Odyssey AV.
 
-O objetivo é proteger o sistema, os arquivos analisados, as informações do usuário e os resultados armazenados, reduzindo riscos durante a execução das ferramentas.
+O objetivo é proteger a aplicação, os arquivos analisados, as informações do usuário e os resultados armazenados, reduzindo riscos durante a execução das ferramentas.
 
-A segurança deverá ser considerada desde o desenvolvimento até a utilização da aplicação.
+A segurança deverá ser considerada desde o desenvolvimento até a utilização da aplicação, respeitando os limites funcionais definidos para o MVP.
 
-# 2. Princípios de segurança
+# 2. Escopo de segurança
+
+O Odyssey AV será uma ferramenta local de análise e diagnóstico, executada por linha de comando.
+
+A segurança deverá contemplar os sete módulos:
+
+| Módulo | Área de proteção |
+|---|---|
+| FILE | Acesso e leitura segura de arquivos |
+| HASH | Integridade e comparação de hashes |
+| NETWORK | Comunicação externa controlada |
+| PASSWORD | Geração segura e proteção de senhas |
+| URL | Análise estrutural sem acesso automático ao destino |
+| PROCESS | Consulta sem interferência nos processos |
+| HISTORY | Proteção e integridade dos registros |
+
+O MVP não será considerado um antivírus ou uma solução completa de proteção de endpoints.
+
+# 3. Princípios de segurança
 
 O Odyssey AV deverá seguir os seguintes princípios:
 
@@ -24,56 +42,73 @@ O Odyssey AV deverá seguir os seguintes princípios:
 - **Privacidade:** evitar armazenar informações sensíveis sem necessidade.
 - **Transparência:** informar quando uma operação realizar comunicação externa.
 - **Não destrutividade:** não modificar, excluir ou colocar arquivos em quarentena automaticamente.
-- **Isolamento:** uma falha em determinado módulo não deverá comprometer os demais.
+- **Isolamento:** uma falha em determinado módulo não deverá comprometer desnecessariamente os demais.
 - **Tratamento seguro de erros:** não expor informações sensíveis em mensagens ou logs.
+- **Integridade:** preservar a consistência dos dados e resultados armazenados.
+- **Previsibilidade:** executar somente operações correspondentes à solicitação explícita do usuário.
 
-# 3. Segurança por módulo
+# 4. Segurança por módulo
 
-## 3.1. FILE — Análise de arquivos
+## 4.1. FILE — Análise de arquivos
 
-Principais riscos:
+**Principais riscos:**
 
 - Acesso indevido a arquivos.
 - Leitura de arquivos sem permissão.
 - Consumo excessivo de memória durante a análise.
 - Interpretação incorreta de formatos.
+- Acesso involuntário a recursos especiais do sistema de arquivos.
+- Alteração ou desaparecimento do arquivo durante a análise.
 
-Controles:
+**Controles:**
 
-- Validar caminhos recebidos.
+- Validar os caminhos recebidos.
 - Respeitar as permissões do sistema operacional.
+- Aceitar somente arquivos regulares.
+- Rejeitar diretórios.
+- Não seguir links simbólicos automaticamente.
+- Rejeitar dispositivos, sockets e pipes.
+- Tratar arquivos que desapareçam ou sejam modificados durante a análise.
+- Processar arquivos em blocos quando necessário.
 - Não executar arquivos analisados.
 - Não modificar o conteúdo dos arquivos.
-- Processar arquivos em blocos quando necessário.
 - Identificar limitações de formatos não suportados.
-- Tratar arquivos especiais e links simbólicos com cuidado.
+- Não apresentar identificação de assinatura como prova de segurança.
 
-## 3.2. HASH — Hash
+A análise deverá trabalhar sobre o conteúdo do arquivo, sem executar seu código ou conteúdo incorporado.
 
-Principais riscos:
+## 4.2. HASH — Hash
+
+**Principais riscos:**
 
 - Comparações incorretas.
 - Uso de referências não confiáveis.
 - Leitura inadequada de arquivos.
+- Interpretação equivocada de correspondência como garantia de segurança.
 
-Controles:
+**Controles:**
 
 - Utilizar SHA-256.
 - Calcular o hash a partir dos bytes reais do arquivo.
-- Validar o formato dos hashes fornecidos.
+- Validar o formato da referência fornecida.
+- Utilizar exclusivamente a referência informada pelo usuário para comparação.
+- Não manter uma base própria de hashes no MVP.
 - Não considerar uma correspondência como prova absoluta de segurança.
 - Não modificar o arquivo original.
 
-## 3.3. NETWORK — Diagnóstico de rede
+A comparação deverá distinguir `MATCH`, `MISMATCH` e `NO_REFERENCE`.
 
-Principais riscos:
+## 4.3. NETWORK — Diagnóstico de rede
+
+**Principais riscos:**
 
 - Comunicação externa não autorizada.
 - Exposição de informações durante consultas externas.
 - Indisponibilidade de serviços.
 - Operações sem limite de tempo.
+- Comunicação oculta em segundo plano.
 
-Controles:
+**Controles:**
 
 - Executar verificações somente quando solicitadas pelo usuário.
 - Informar quando houver comunicação externa.
@@ -81,69 +116,86 @@ Controles:
 - Tratar falhas e indisponibilidade de serviços.
 - Não realizar varreduras de portas de terceiros.
 - Não manter comunicação oculta em segundo plano.
+- Tornar opcional a consulta de IP público.
+- Identificar o serviço externo utilizado na consulta de IP público na documentação da implementação.
 
-A consulta de IP público deverá ser opcional e utilizar um serviço externo identificado na documentação da implementação.
+Operações locais não deverão iniciar comunicações externas implícitas.
 
-## 3.4. PASSWORD — Ferramentas de senha
+## 4.4. PASSWORD — Ferramentas de senha
 
-Principais riscos:
+**Principais riscos:**
 
 - Exposição de senhas em logs.
 - Persistência acidental de senhas.
 - Geração de valores previsíveis.
 - Exposição de senhas em relatórios.
+- Vazamento por argumentos ou mensagens de erro.
 
-Controles:
+**Controles:**
 
 - Utilizar o módulo `secrets` para geração.
 - Não armazenar senhas geradas ou avaliadas.
 - Não incluir senhas no histórico.
 - Não registrar senhas nos logs.
 - Não incluir senhas em relatórios exportados.
-- Evitar exibir valores sensíveis em mensagens de erro.
+- Não persistir senhas em argumentos de comandos.
+- Não incluir senhas em mensagens de erro, resumos ou resultados estruturados.
+- Evitar exibir valores sensíveis desnecessariamente.
+- Realizar a avaliação localmente, sem envio a serviços externos.
 
-## 3.5. URL — Análise de URL
+A execução do módulo poderá ser registrada, desde que sejam armazenados somente metadados operacionais e informações sanitizadas.
 
-Principais riscos:
+A proteção deverá abranger também dados que permitam recuperar indiretamente o valor da senha.
+
+## 4.5. URL — Análise de URL
+
+**Principais riscos:**
 
 - Acesso involuntário a destinos externos.
 - Interpretação incorreta de endereços.
 - Identificação equivocada de URLs suspeitas.
+- Execução de conteúdo associado a endereços analisados.
 
-Controles:
+**Controles:**
 
 - Realizar análise estrutural local.
 - Normalizar e validar URLs.
 - Não acessar automaticamente os endereços analisados.
 - Não executar scripts ou conteúdo associado às URLs.
+- Não realizar consultas DNS implícitas.
 - Apresentar indicadores como suspeitas, não como confirmação de ameaça.
 
-## 3.6. PROCESS — Monitoramento de processos
+## 4.6. PROCESS — Monitoramento de processos
 
-Principais riscos:
+**Principais riscos:**
 
 - Acesso a informações sem permissão.
 - Exposição de informações de processos.
 - Interferência indevida em processos do sistema.
+- Indisponibilidade de processos durante a consulta.
 
-Controles:
+**Controles:**
 
 - Consultar somente informações acessíveis ao usuário.
 - Respeitar as permissões do sistema operacional.
 - Informar quando determinadas métricas não estiverem disponíveis.
+- Tratar processos encerrados durante a consulta.
 - Não encerrar, suspender ou modificar processos.
 - Não injetar código em processos.
+- Não solicitar privilégios administrativos automaticamente.
 
-## 3.7. HISTORY — Histórico e relatórios
+## 4.7. HISTORY — Histórico e relatórios
 
-Principais riscos:
+**Principais riscos:**
 
 - Exposição de informações sensíveis.
 - Alteração ou perda de registros.
-- Persistência acidental de dados que deveriam ser temporários.
+- Persistência acidental de dados temporários.
 - Exportação de informações inadequadas.
+- Inconsistência entre execuções e resultados.
+- Registros indefinidamente no estado `RUNNING`.
 
-Controles:
+**Controles:**
 
 - Utilizar consultas parametrizadas no SQLite.
 - Não persistir senhas.
@@ -152,23 +204,28 @@ Controles:
 - Não registrar argumentos que contenham segredos.
 - Exportar somente informações permitidas.
 - Preservar a integridade dos relacionamentos entre execuções e resultados.
+- Utilizar transações nas operações de persistência.
+- Identificar cada instância da aplicação por UUID.
+- Recuperar execuções anteriores que permaneceram em `RUNNING`, utilizando o estado `INTERRUPTED`.
+- Não gerar registros recursivos durante consultas e exportações do próprio histórico.
 
-# 4. Proteção de dados
+# 5. Proteção de dados
 
-O Odyssey AV deverá armazenar somente os dados necessários para seu funcionamento.
+O Odyssey AV deverá armazenar somente os dados necessários para seu funcionamento e para a consulta do histórico.
 
-## 4.1. Dados que podem ser armazenados
+## 5.1. Dados que podem ser armazenados
 
 - Identificador da execução.
+- Identificador da instância.
 - Módulo utilizado.
-- Nome do caso de uso ou comando normalizado.
+- Comando normalizado.
 - Estado da execução.
 - Data e horário.
-- Duração.
-- Resultados das análises.
-- Mensagens técnicas sem informações sensíveis.
+- Duração, quando disponível.
+- Resultados estruturados das análises.
+- Mensagens técnicas sanitizadas.
 
-## 4.2. Dados que não devem ser armazenados
+## 5.2. Dados que não devem ser armazenados
 
 - Senhas geradas.
 - Senhas avaliadas.
@@ -176,20 +233,35 @@ O Odyssey AV deverá armazenar somente os dados necessários para seu funcioname
 - Segredos presentes nos argumentos.
 - Informações pessoais desnecessárias.
 - Dados sensíveis que não sejam necessários ao histórico.
+- Informações que permitam reconstruir indiretamente valores protegidos.
 
-## 4.3. Logs
+## 5.3. Sanitização
+
+Antes da persistência, os dados deverão ser avaliados para impedir a exposição de informações sensíveis.
+
+A sanitização deverá contemplar:
+
+- Comandos e argumentos.
+- Mensagens de erro.
+- Resumos das execuções.
+- Dados estruturados dos resultados.
+- Informações utilizadas em relatórios.
+
+A sanitização não deverá ser tratada como substituta da minimização de dados: informações desnecessárias não deverão ser coletadas ou encaminhadas à persistência.
+
+## 5.4. Logs
 
 Os logs deverão registrar informações úteis para diagnóstico técnico.
 
 Não deverão ser utilizados como substitutos do histórico de execuções.
 
-Senhas, tokens e outros segredos não poderão aparecer nos registros.
+Senhas, tokens, segredos e outros dados sensíveis não poderão aparecer nos registros.
 
-# 5. Segurança da persistência
+# 6. Segurança da persistência
 
 A aplicação utilizará SQLite para armazenar o histórico local.
 
-Controles básicos:
+**Controles obrigatórios:**
 
 - Utilizar consultas parametrizadas.
 - Ativar e verificar as restrições de chave estrangeira.
@@ -197,10 +269,37 @@ Controles básicos:
 - Tratar falhas de leitura e escrita.
 - Evitar corrupção e inconsistência dos registros.
 - Não expor diretamente os dados internos do banco pela CLI.
+- Centralizar o acesso ao banco na camada de infraestrutura.
+- Respeitar o relacionamento entre `AnalysisRun` e `AnalysisResult`.
+- Evitar persistência de informações sensíveis.
 
-O acesso ao banco deverá permanecer centralizado na camada de infraestrutura.
+## 6.1. Falha de persistência
 
-# 6. Segurança de entradas e execução
+A falha ao registrar uma operação não deverá ser confundida com falha funcional.
+
+A aplicação deverá distinguir:
+
+- Resultado da operação solicitada.
+- Resultado da tentativa de persistência.
+
+Exemplo:
+
+```text
+Operação HASH:
+    Resultado funcional: SUCCESS
+
+Persistência:
+    Resultado do histórico: FAILED
+
+Comunicação:
+    Operação concluída, mas não foi possível registrar o histórico.
+```
+
+A CLI deverá informar claramente as duas situações.
+
+O sistema não deverá afirmar que os dados foram registrados quando a persistência não tiver sido confirmada.
+
+# 7. Segurança de entradas e execução
 
 Todas as entradas recebidas deverão ser tratadas como dados não confiáveis.
 
@@ -213,10 +312,12 @@ A aplicação deverá:
 - Utilizar consultas SQL parametrizadas.
 - Evitar execução de comandos do sistema operacional construídos a partir de entradas do usuário.
 - Tratar exceções sem expor informações internas desnecessárias.
+- Evitar que entradas inválidas provoquem operações inesperadas.
+- Impedir que arquivos analisados sejam executados.
 
-Arquivos analisados nunca deverão ser executados pelo Odyssey AV.
+A validação deverá ocorrer nas fronteiras adequadas da aplicação, sem concentrar todas as regras na interface CLI.
 
-# 7. Permissões do sistema operacional
+# 8. Permissões do sistema operacional
 
 O Odyssey AV deverá funcionar com as permissões normais do usuário sempre que possível.
 
@@ -226,22 +327,58 @@ Quando uma operação depender de permissões adicionais, o sistema deverá info
 
 A ausência de acesso a determinado arquivo ou processo não deverá ser interpretada como ausência de risco.
 
-# 8. Matriz de ameaças
+As diferenças entre Windows e Linux deverão ser consideradas na implementação dos adaptadores de plataforma.
+
+# 9. Segurança da instância e concorrência
+
+## 9.1. Instância única
+
+O MVP deverá permitir somente uma instância ativa do Odyssey AV por vez.
+
+A aplicação deverá utilizar um mecanismo de bloqueio exclusivo compatível com Windows e Linux.
+
+Uma nova inicialização não deverá executar operações funcionais enquanto outra instância mantiver o bloqueio.
+
+## 9.2. Identificação da instância
+
+Cada inicialização válida deverá receber um UUID próprio (`instance_id`).
+
+As execuções deverão estar associadas à instância responsável por sua criação.
+
+O identificador deverá permitir distinguir registros de inicializações diferentes, sem depender exclusivamente do PID.
+
+## 9.3. Recuperação de execuções interrompidas
+
+Após obter o bloqueio exclusivo, a aplicação deverá verificar execuções anteriores que permaneceram no estado `RUNNING`.
+
+As execuções pertencentes a instâncias anteriores deverão ser atualizadas para `INTERRUPTED`.
+
+O mecanismo deverá evitar que uma execução de outra instância ativa seja marcada incorretamente como interrompida.
+
+## 9.4. Liberação do bloqueio
+
+O bloqueio deverá ser liberado no encerramento normal da aplicação.
+
+Em encerramentos inesperados, deverá ser utilizado um mecanismo do sistema operacional que permita liberar o bloqueio quando o processo responsável deixar de existir.
+
+O bloqueio não deverá depender de um arquivo de estado permanente que impeça a inicialização após uma falha.
+
+# 10. Matriz de ameaças
 
 | ID | Ameaça | Impacto | Controle |
 |---|---|---|---|
-| SEC-001 | Exposição de senhas | Alto | Não persistir senhas ou registrá-las em logs |
+| SEC-001 | Exposição de senhas | Alto | Não persistir senhas nem registrá-las em logs, argumentos ou relatórios |
 | SEC-002 | Execução acidental de arquivo analisado | Alto | Nunca executar arquivos analisados |
-| SEC-003 | Acesso indevido a arquivos | Alto | Validar caminhos e respeitar permissões |
+| SEC-003 | Acesso indevido a arquivos | Alto | Validar caminhos, rejeitar recursos especiais e respeitar permissões |
 | SEC-004 | SQL Injection | Alto | Utilizar consultas parametrizadas |
-| SEC-005 | Comunicação externa inesperada | Médio | Operações externas explícitas |
-| SEC-006 | Consumo excessivo de recursos | Médio | Processamento controlado e limites a definir |
+| SEC-005 | Comunicação externa inesperada | Médio | Operações externas explícitas e identificáveis |
+| SEC-006 | Consumo excessivo de recursos | Médio | Processamento controlado e limites operacionais |
 | SEC-007 | Exposição de dados no histórico | Alto | Minimização e sanitização dos dados |
 | SEC-008 | Interferência em processos | Alto | Permitir somente consulta e listagem |
 | SEC-009 | Interpretação incorreta de ameaças | Médio | Apresentar limitações e indicadores como suspeitas |
-| SEC-010 | Falha na persistência | Médio | Transações e tratamento de erros |
+| SEC-010 | Falha na persistência | Médio | Transações, tratamento de erros e separação do resultado funcional |
 
-# 9. Tratamento de falhas de segurança
+# 11. Tratamento de falhas de segurança
 
 Quando uma operação apresentar falha relacionada à segurança, a aplicação deverá:
 
@@ -250,25 +387,39 @@ Quando uma operação apresentar falha relacionada à segurança, a aplicação 
 3. Apresentar uma mensagem compreensível.
 4. Registrar informações técnicas sem expor dados sensíveis.
 5. Preservar os resultados que puderem ser armazenados com segurança.
+6. Distinguir limitações de acesso de resultados negativos de análise.
+7. Informar separadamente falhas funcionais e falhas de persistência.
 
-# 10. Testes de segurança
+A aplicação não deverá apresentar uma análise incompleta como se tivesse sido concluída integralmente.
+
+# 12. Testes de segurança
 
 O MVP deverá possuir testes para verificar os controles principais.
 
 | ID | Teste | Resultado esperado |
 |---|---|---|
-| ST-001 | Analisar arquivo sem permissão | Erro tratado sem interromper a aplicação |
+| ST-001 | Analisar arquivo sem permissão | Erro tratado sem interromper indevidamente a aplicação |
 | ST-002 | Analisar arquivo suspeito | Arquivo não executado ou modificado |
 | ST-003 | Informar entrada inválida | Entrada rejeitada |
 | ST-004 | Gerar senha | Senha não aparece no histórico ou logs |
 | ST-005 | Avaliar senha | Valor não é persistido |
 | ST-006 | Analisar URL | Nenhuma requisição automática ao destino |
 | ST-007 | Consultar processos | Nenhum processo é modificado |
-| ST-008 | Consultar histórico | Dados persistidos sem exposição de segredos |
+| ST-008 | Consultar histórico | Dados consultados sem exposição de segredos |
 | ST-009 | Exportar histórico | Senhas e dados sensíveis são excluídos |
 | ST-010 | Consultar SQLite | Entradas não alteram a estrutura das consultas |
+| ST-011 | Analisar diretório | Recurso rejeitado |
+| ST-012 | Analisar link simbólico | Link não seguido automaticamente |
+| ST-013 | Analisar dispositivo, socket ou pipe | Recurso rejeitado |
+| ST-014 | Modificar ou remover arquivo durante leitura | Situação tratada sem resultado enganoso |
+| ST-015 | Iniciar segunda instância | Nova instância impedida de executar operações |
+| ST-016 | Encerrar instância inesperadamente | Execuções anteriores em `RUNNING` recuperadas como `INTERRUPTED` |
+| ST-017 | Simular falha no SQLite | Resultado funcional preservado e falha de histórico comunicada |
+| ST-018 | Informar segredo em argumento ou entrada | Segredo não aparece em histórico, logs ou mensagens persistidas |
 
-# 11. Limites de segurança do MVP
+Os testes deverão ser executados em ambientes Windows e Linux sempre que o comportamento depender de particularidades da plataforma.
+
+# 13. Limites de segurança do MVP
 
 O Odyssey AV não deverá ser considerado um antivírus ou uma solução completa de proteção de endpoints.
 
@@ -283,30 +434,43 @@ O MVP não implementará:
 - Monitoramento remoto obrigatório.
 - Inteligência artificial para classificação de ameaças.
 - Varredura ou exploração de portas de terceiros.
+- Comunicação oculta em segundo plano.
 
 A identificação de indicadores suspeitos não representa confirmação de malware.
 
-# 12. Referências
+A identificação de uma assinatura de arquivo também não representa validação integral de seu conteúdo ou garantia de segurança.
+
+# 14. Referências técnicas
+
+As seguintes fontes deverão orientar a implementação e a revisão dos controles:
 
 - OWASP — princípios e boas práticas de segurança de aplicações.
-- Python Documentation — `hashlib` e `secrets`.
-- SQLite Documentation — consultas parametrizadas e transações.
+- Python Documentation — `hashlib`, `secrets` e tratamento de arquivos.
+- SQLite Documentation — consultas parametrizadas, transações e chaves estrangeiras.
+- Typer Documentation — interface de linha de comando.
+- psutil Documentation — consulta de processos.
 - Regras de negócio do Odyssey AV.
 - Requisitos funcionais e não funcionais do Odyssey AV.
+- Arquitetura do Odyssey AV.
+- Modelo de dados do Odyssey AV.
 
----
+As referências deverão ser complementadas com links e versões específicas durante a implementação, quando as dependências e APIs utilizadas forem definidas.
 
-# 13. Estado do documento
+# 15. Estado do documento
 
 | Critério | Situação |
 |---|---|
 | Princípios de segurança | Definidos |
 | Segurança por módulo | Definida |
 | Proteção de dados | Definida |
+| Sanitização | Definida conceitualmente |
 | Proteção de entradas | Definida |
 | Segurança da persistência | Definida |
+| Falha de persistência | Tratamento definido |
 | Permissões do sistema operacional | Definidas |
-| Matriz de ameaças | Elaborada |
+| Instância única | Definida |
+| Recuperação de execuções | Definida |
+| Matriz de ameaças | Atualizada |
 | Testes de segurança | Especificados |
-| Revisão de consistência | Pendente |
-
+| Limites do MVP | Definidos |
+| Revisão cruzada | Pendente |

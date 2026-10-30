@@ -1,9 +1,9 @@
 # MAPA-FASE-1.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 1.0  
+**Versão:** 2.0  
 **Escopo:** MVP  
-**Status:** Primeira versão
+**Status:** Consolidado para revisão
 
 ---
 
@@ -11,16 +11,20 @@
 
 Este documento define a estrutura de diretórios, pacotes e arquivos prevista para o desenvolvimento do Odyssey AV.
 
-O mapa funciona como uma referência estrutural para orientar a implementação, mantendo a organização modular, a separação de responsabilidades e a rastreabilidade com a documentação do projeto.
+O mapa orienta a implementação, estabelecendo a organização dos componentes, suas responsabilidades e as dependências permitidas entre as camadas.
 
-A estrutura considera:
+A estrutura deverá acompanhar o backlog e respeitar os documentos:
 
-- Python como linguagem principal.
-- Typer para interface de linha de comando.
-- Arquitetura modular em camadas.
-- SQLite para persistência local.
-- pytest para testes automatizados.
-- Compatibilidade com Windows e Linux.
+- `REQUISITOS.md`
+- `REGRAS-DE-NEGOCIO.md`
+- `ARQUITETURA.md`
+- `SEGURANCA.md`
+- `MODELO-DE-DADOS.md`
+- `API.md`
+- `TESTES.md`
+- `BACKLOG.md`
+
+O mapa representa a estrutura planejada. Sua presença neste documento não significa que todos os diretórios e arquivos devam ser criados imediatamente.
 
 # 2. Estrutura geral do projeto
 
@@ -32,15 +36,16 @@ odyssey-av/
 ├── .gitignore
 │
 ├── docs/
+│   ├── README.md
 │   ├── REQUISITOS.md
 │   ├── REGRAS-DE-NEGOCIO.md
 │   ├── ARQUITETURA.md
 │   ├── SEGURANCA.md
 │   ├── MODELO-DE-DADOS.md
+│   ├── API.md
 │   ├── TESTES.md
 │   ├── BACKLOG.md
-│   ├── MAPA-FASE-1.md
-│   └── API.md
+│   └── MAPA-FASE-1.md
 │
 ├── src/
 │   └── odyssey_av/
@@ -63,12 +68,17 @@ odyssey-av/
 │       │
 │       ├── application/
 │       │   ├── __init__.py
+│       │   │
 │       │   ├── contracts/
 │       │   │   ├── __init__.py
-│       │   │   └── execution.py
+│       │   │   ├── execution.py
+│       │   │   └── repositories.py
+│       │   │
 │       │   ├── services/
 │       │   │   ├── __init__.py
-│       │   │   └── execution_service.py
+│       │   │   ├── execution_service.py
+│       │   │   └── instance_service.py
+│       │   │
 │       │   └── use_cases/
 │       │       ├── __init__.py
 │       │       ├── analyze_file.py
@@ -80,50 +90,63 @@ odyssey-av/
 │       │       ├── analyze_url.py
 │       │       ├── list_processes.py
 │       │       ├── list_history.py
+│       │       ├── show_history.py
 │       │       └── export_history.py
 │       │
 │       ├── domain/
 │       │   ├── __init__.py
+│       │   │
 │       │   ├── entities/
 │       │   │   ├── __init__.py
 │       │   │   ├── analysis_run.py
 │       │   │   └── analysis_result.py
+│       │   │
 │       │   ├── enums/
 │       │   │   ├── __init__.py
 │       │   │   ├── execution_status.py
 │       │   │   ├── result_status.py
 │       │   │   └── module.py
+│       │   │
 │       │   └── exceptions/
 │       │       └── __init__.py
 │       │
 │       ├── modules/
 │       │   ├── __init__.py
+│       │   │
 │       │   ├── file/
 │       │   │   ├── __init__.py
 │       │   │   ├── analyzer.py
-│       │   │   └── signatures.py
+│       │   │   ├── signatures.py
+│       │   │   └── file_validator.py
+│       │   │
 │       │   ├── hash/
 │       │   │   ├── __init__.py
 │       │   │   └── calculator.py
+│       │   │
 │       │   ├── network/
 │       │   │   ├── __init__.py
 │       │   │   └── diagnostics.py
+│       │   │
 │       │   ├── password/
 │       │   │   ├── __init__.py
 │       │   │   ├── generator.py
 │       │   │   └── evaluator.py
+│       │   │
 │       │   ├── url/
 │       │   │   ├── __init__.py
 │       │   │   └── analyzer.py
+│       │   │
 │       │   ├── process/
 │       │   │   ├── __init__.py
 │       │   │   └── monitor.py
+│       │   │
 │       │   └── history/
 │       │       ├── __init__.py
 │       │       └── service.py
 │       │
 │       ├── infrastructure/
 │       │   ├── __init__.py
+│       │   │
 │       │   ├── persistence/
 │       │   │   ├── __init__.py
 │       │   │   ├── database.py
@@ -133,33 +156,42 @@ odyssey-av/
 │       │   │   │   └── analysis_result_repository.py
 │       │   │   └── migrations/
 │       │   │       └── 001_initial_schema.sql
+│       │   │
 │       │   ├── platform/
 │       │   │   ├── __init__.py
 │       │   │   ├── system.py
-│       │   │   └── process_adapter.py
+│       │   │   ├── process_adapter.py
+│       │   │   └── instance_lock.py
+│       │   │
 │       │   └── network/
 │       │       ├── __init__.py
 │       │       └── network_adapter.py
 │       │
 │       └── shared/
 │           ├── __init__.py
+│           │
 │           ├── config/
 │           │   ├── __init__.py
 │           │   └── loader.py
+│           │
 │           ├── logging/
 │           │   ├── __init__.py
 │           │   └── logger.py
+│           │
 │           ├── validation/
 │           │   ├── __init__.py
 │           │   └── validators.py
+│           │
 │           └── errors/
 │               ├── __init__.py
 │               └── handlers.py
 │
 ├── tests/
 │   ├── conftest.py
+│   │
 │   ├── unit/
 │   │   ├── test_file_analyzer.py
+│   │   ├── test_file_validator.py
 │   │   ├── test_hash_calculator.py
 │   │   ├── test_network_diagnostics.py
 │   │   ├── test_password_generator.py
@@ -172,22 +204,29 @@ odyssey-av/
 │   │   ├── test_execution_flow.py
 │   │   ├── test_persistence.py
 │   │   ├── test_history.py
-│   │   └── test_export.py
+│   │   ├── test_export.py
+│   │   └── test_instance_recovery.py
 │   │
 │   ├── cli/
 │   │   └── test_commands.py
 │   │
-│   └── security/
-│       ├── test_file_safety.py
-│       ├── test_password_privacy.py
-│       ├── test_url_safety.py
-│       ├── test_process_safety.py
-│       └── test_history_privacy.py
+│   ├── security/
+│   │   ├── test_file_safety.py
+│   │   ├── test_password_privacy.py
+│   │   ├── test_url_safety.py
+│   │   ├── test_process_safety.py
+│   │   └── test_history_privacy.py
+│   │
+│   └── platform/
+│       ├── test_instance_lock.py
+│       └── test_platform_compatibility.py
 │
 └── .github/
     └── workflows/
         └── tests.yml
 ```
+
+**Observação:** essa estrutura é uma referência arquitetural. Arquivos de testes e implementação serão criados conforme suas respectivas histórias e tarefas forem desenvolvidas.
 
 # 3. Responsabilidade dos diretórios
 
@@ -195,45 +234,53 @@ odyssey-av/
 
 Armazena a documentação oficial do projeto.
 
-Os documentos devem acompanhar a evolução do desenvolvimento.
-
-Alterações em requisitos, regras de negócio, arquitetura, segurança ou modelo de dados devem ser avaliadas quanto aos impactos nos demais documentos.
+Os documentos deverão permanecer consistentes entre si. Alterações em requisitos, regras de negócio, arquitetura, segurança ou modelo de dados deverão ser avaliadas quanto aos seus impactos.
 
 ## 3.2. `src/odyssey_av/`
 
-Contém o código-fonte principal da aplicação.
+Contém o código-fonte principal.
 
-A organização interna separa a interface de entrada, a coordenação dos casos de uso, o domínio, os módulos funcionais e a infraestrutura.
+Sua organização separa a interface de entrada, a coordenação dos casos de uso, o domínio, os módulos funcionais e a infraestrutura.
 
 ## 3.3. `cli/`
 
-Responsável pela interface de linha de comando.
+Responsável pela interface de linha de comando, utilizando Typer.
 
 Responsabilidades:
 
 - Registrar comandos.
 - Receber argumentos.
-- Validar parâmetros de entrada da interface.
-- Encaminhar operações para os casos de uso.
-- Apresentar resultados e mensagens de erro.
+- Validar parâmetros da interface.
+- Encaminhar operações para a aplicação.
+- Apresentar resultados.
+- Apresentar erros e códigos de saída.
 
-A CLI não deve implementar regras de negócio.
+A CLI não deve implementar regras de negócio nem acessar diretamente o SQLite.
 
 ## 3.4. `application/`
 
-Responsável por coordenar a execução das funcionalidades.
+Responsável por coordenar os casos de uso e controlar o fluxo de execução.
 
 ### `contracts/`
 
-Define contratos compartilhados entre a camada de aplicação e os componentes envolvidos na execução.
+Define contratos utilizados pela aplicação para comunicação com outros componentes.
+
+Os contratos deverão evitar dependência direta da aplicação em implementações concretas de infraestrutura.
 
 ### `services/`
 
-Contém serviços de aplicação que coordenam operações transversais, como o ciclo de execução e o registro de resultados.
+Contém serviços de aplicação que coordenam operações transversais.
+
+Responsabilidades previstas:
+
+- Gerenciar o ciclo de execução.
+- Coordenar registro de início e término.
+- Controlar o ciclo de vida da instância.
+- Coordenar a recuperação de execuções anteriores.
 
 ### `use_cases/`
 
-Contém os casos de uso que representam as operações disponibilizadas pela aplicação.
+Contém as operações disponibilizadas pela aplicação.
 
 Exemplos:
 
@@ -246,13 +293,14 @@ Exemplos:
 - `AnalyzeUrl`
 - `ListProcesses`
 - `ListHistory`
+- `ShowHistory`
 - `ExportHistory`
 
-Cada caso de uso deve possuir uma responsabilidade delimitada.
+Cada caso de uso deverá possuir responsabilidade delimitada.
 
 ## 3.5. `domain/`
 
-Contém os elementos centrais do domínio.
+Contém as entidades, classificações e regras centrais do domínio.
 
 ### `entities/`
 
@@ -263,91 +311,110 @@ Entidades persistentes:
 
 ### `enums/`
 
-Estados e classificações utilizados pelo domínio:
+Classificações:
 
 - `ExecutionStatus`
 - `ResultStatus`
 - `Module`
 
+Os estados de execução deverão contemplar:
+
+- RUNNING
+- SUCCESS
+- PARTIAL
+- FAILED
+- INTERRUPTED
+
 ### `exceptions/`
 
 Exceções específicas do domínio, quando necessárias.
 
-O domínio não deve depender da CLI, do SQLite ou de detalhes de infraestrutura.
+O domínio não deverá depender da CLI, do SQLite ou de detalhes de infraestrutura.
 
 ## 3.6. `modules/`
 
-Contém as sete ferramentas funcionais do Odyssey AV.
+Contém as sete ferramentas funcionais.
 
 | Módulo | Responsabilidade |
 |---|---|
-| `file/` | Analisar arquivos e assinaturas |
-| `hash/` | Calcular e comparar hashes |
-| `network/` | Diagnosticar conectividade e DNS |
-| `password/` | Gerar e avaliar senhas |
-| `url/` | Analisar e normalizar URLs |
-| `process/` | Consultar processos do sistema |
-| `history/` | Consultar e organizar histórico |
+| `file/` | Metadados, assinaturas e divergências de arquivos |
+| `hash/` | Cálculo e comparação SHA-256 |
+| `network/` | Diagnóstico de conectividade e DNS |
+| `password/` | Geração e avaliação local de senhas |
+| `url/` | Parsing, normalização e indicadores suspeitos |
+| `process/` | Consulta de processos e métricas acessíveis |
+| `history/` | Consulta e organização de registros históricos |
 
-Os módulos não devem depender diretamente uns dos outros.
+Os módulos deverão produzir resultados estruturados.
 
-A comunicação entre funcionalidades deve ocorrer por meio dos contratos e casos de uso da aplicação, quando necessário.
+Não deverão acessar diretamente o SQLite ou assumir responsabilidades da camada de aplicação.
 
 ## 3.7. `infrastructure/`
 
-Contém implementações técnicas que dependem de recursos externos ou do ambiente de execução.
+Contém implementações técnicas dependentes de recursos externos ou do sistema operacional.
 
 ### `persistence/`
 
-Responsável pelo SQLite e pela persistência das entidades.
+Responsável pela persistência local.
 
-Contém:
+Componentes:
 
-- Conexão com o banco.
-- Repositórios.
-- Estrutura SQL inicial.
+- Conexão SQLite.
+- Repositórios de execução e resultado.
+- Estrutura inicial do banco.
+- Mecanismos de integridade e transação.
 
 ### `platform/`
 
-Responsável por isolar particularidades dos sistemas operacionais.
+Responsável por isolar diferenças entre Windows e Linux.
+
+Inclui:
+
+- Identificação e informações do sistema.
+- Adaptador de processos.
+- Mecanismo de bloqueio exclusivo da instância.
+
+O mecanismo de bloqueio deverá utilizar recursos adequados de cada sistema operacional, mantendo um contrato comum para a aplicação.
 
 ### `network/`
 
-Responsável pelos adaptadores utilizados nas operações de rede.
+Contém adaptadores para operações de rede.
 
-A infraestrutura implementa os mecanismos técnicos, sem definir as regras de negócio.
+Deverá respeitar os limites e timeouts definidos para o MVP.
 
 ## 3.8. `shared/`
 
-Contém serviços transversais utilizados por diferentes partes da aplicação.
+Contém componentes transversais reutilizáveis.
 
 | Diretório | Responsabilidade |
 |---|---|
-| `config/` | Carregamento e validação de configurações |
-| `logging/` | Logs centralizados |
+| `config/` | Carregamento e validação de configuração |
+| `logging/` | Logs centralizados e sanitizados |
 | `validation/` | Validações reutilizáveis |
 | `errors/` | Tratamento compartilhado de erros |
 
-Não devem ser adicionadas abstrações genéricas sem necessidade comprovada.
+Não deverão ser criadas abstrações genéricas sem necessidade comprovada.
 
-# 4. Responsabilidade dos arquivos principais
+# 4. Responsabilidade dos principais arquivos
 
 | Arquivo | Responsabilidade |
 |---|---|
 | `main.py` | Inicialização da aplicação |
 | `cli/app.py` | Configuração da CLI |
-| `application/services/execution_service.py` | Coordenar ciclo de execução |
-| `domain/entities/analysis_run.py` | Representar execução |
-| `domain/entities/analysis_result.py` | Representar resultado |
+| `application/services/execution_service.py` | Coordenar ciclo de execução e resultados |
+| `application/services/instance_service.py` | Coordenar ciclo de vida da instância |
+| `domain/entities/analysis_run.py` | Representar uma execução |
+| `domain/entities/analysis_result.py` | Representar um resultado |
 | `infrastructure/persistence/database.py` | Gerenciar conexão SQLite |
 | `analysis_run_repository.py` | Persistir e consultar execuções |
 | `analysis_result_repository.py` | Persistir e consultar resultados |
-| `shared/config/loader.py` | Carregar configurações |
+| `infrastructure/platform/instance_lock.py` | Implementar bloqueio exclusivo |
+| `shared/config/loader.py` | Carregar configuração |
 | `shared/logging/logger.py` | Centralizar logs |
 
 # 5. Fluxo arquitetural
 
-O fluxo padrão de uma operação será:
+O fluxo padrão de uma operação funcional será:
 
 ```text
 Usuário
@@ -362,7 +429,7 @@ Caso de uso
 Módulo funcional
    |
    v
-Resultado
+Resultado estruturado
    |
    v
 Serviço de execução
@@ -375,48 +442,105 @@ Serviço de execução
                SQLite
 ```
 
-A camada de aplicação coordena o fluxo e utiliza os contratos definidos para acessar os recursos necessários.
+A aplicação deverá coordenar a execução e a persistência.
 
-Os módulos funcionais não devem acessar diretamente a CLI nem controlar a persistência do histórico.
+O resultado funcional e o resultado da persistência deverão ser tratados separadamente.
 
-# 6. Organização dos testes
+Uma falha no SQLite não deverá transformar automaticamente uma operação funcional bem-sucedida em uma operação funcional com falha.
 
-Os testes deverão acompanhar a organização funcional do projeto.
+As operações de HISTORY deverão consultar e exportar registros sem criar novos `AnalysisRun`.
 
-## 6.1. `tests/unit/`
+# 6. Ciclo de vida da aplicação
 
-Verifica o comportamento isolado das funcionalidades.
+O ciclo de vida deverá seguir esta sequência:
+
+```text
+Inicialização
+     |
+     v
+Gerar instance_id
+     |
+     v
+Adquirir bloqueio exclusivo
+     |
+     +---- Falha ----> Impedir execução
+     |
+     v
+Inicializar infraestrutura
+     |
+     v
+Recuperar registros RUNNING anteriores
+     |
+     v
+Marcar registros como INTERRUPTED
+     |
+     v
+Disponibilizar comandos funcionais
+     |
+     v
+Encerramento
+     |
+     v
+Liberar bloqueio
+```
+
+O bloqueio deverá ser mantido enquanto a instância estiver ativa.
+
+A identificação de uma instância não deverá depender exclusivamente do PID.
+
+O fluxo deverá ser validado em Windows e Linux.
+
+# 7. Organização dos testes
+
+Os testes deverão acompanhar a organização funcional e arquitetural.
+
+## 7.1. `tests/unit/`
+
+Verifica componentes isoladamente.
 
 Exemplos:
 
-- Cálculo de SHA-256.
+- Cálculo SHA-256.
 - Parsing de URLs.
 - Geração de senhas.
 - Identificação de assinaturas.
+- Validação de arquivos.
 - Filtros de processos.
 
-## 6.2. `tests/integration/`
+## 7.2. `tests/integration/`
 
-Verifica a interação entre componentes.
+Verifica a comunicação entre componentes.
 
 Exemplos:
 
-- Execução de caso de uso com persistência.
+- Execução de casos de uso com persistência.
 - Associação entre execução e resultado.
-- Consulta do histórico.
-- Exportação de relatórios.
+- Consulta e exportação de histórico.
+- Recuperação de execuções interrompidas.
+- Tratamento de falhas de persistência.
 
-## 6.3. `tests/cli/`
+## 7.3. `tests/cli/`
 
-Verifica os comandos, parâmetros e respostas da interface.
+Verifica comandos, argumentos, saídas e códigos de retorno.
 
-## 6.4. `tests/security/`
+## 7.4. `tests/security/`
 
-Verifica os controles de segurança definidos no documento `SEGURANCA.md`.
+Verifica os controles definidos em `SEGURANCA.md`.
 
-## 6.5. `conftest.py`
+## 7.5. `tests/platform/`
 
-Armazena fixtures compartilhadas, como:
+Verifica particularidades do sistema operacional.
+
+Exemplos:
+
+- Bloqueio exclusivo.
+- Liberação de bloqueio.
+- Recuperação após encerramento inesperado.
+- Compatibilidade Windows/Linux.
+
+## 7.6. `conftest.py`
+
+Armazena fixtures compartilhadas:
 
 - Banco SQLite temporário.
 - Diretórios temporários.
@@ -424,9 +548,9 @@ Armazena fixtures compartilhadas, como:
 - Dados simulados.
 - Dependências substituídas por mocks.
 
-# 7. Configuração e arquivos auxiliares
+# 8. Configuração e arquivos auxiliares
 
-## 7.1. `pyproject.toml`
+## 8.1. `pyproject.toml`
 
 Centraliza:
 
@@ -436,48 +560,55 @@ Centraliza:
 - Configuração do pytest.
 - Configuração de cobertura.
 
-## 7.2. `.gitignore`
+## 8.2. `.gitignore`
 
-Deve impedir o versionamento de arquivos locais e temporários.
-
-Exemplos:
+Deverá impedir o versionamento de arquivos locais e temporários, como:
 
 - Ambientes virtuais.
 - Cache Python.
-- Arquivos de banco locais.
+- Banco SQLite local.
 - Logs.
 - Arquivos temporários.
-- Configurações locais que possam conter dados sensíveis.
+- Configurações locais com informações sensíveis.
 
-## 7.3. Configuração TOML
+## 8.3. Configuração TOML
 
-A configuração da aplicação poderá ser carregada de um arquivo TOML local.
+O arquivo TOML será opcional.
 
-O arquivo de configuração real não deverá ser versionado quando contiver informações específicas do ambiente do usuário.
+A precedência será:
 
-Um exemplo de configuração poderá ser disponibilizado posteriormente, sem segredos.
+1. Padrões internos.
+2. Configuração TOML.
+3. Argumentos explícitos da CLI.
 
-## 7.4. Banco de dados
+A ausência do arquivo deverá ser permitida.
+
+Um arquivo inválido deverá gerar erro claro, sem ignorar silenciosamente configurações incorretas.
+
+## 8.4. Banco de dados
 
 O SQLite será armazenado localmente.
 
-O arquivo de banco de dados real não deverá ser incluído no repositório.
+O banco real não deverá ser incluído no repositório.
 
-A estrutura inicial do banco será mantida em SQL versionado.
+A estrutura inicial será mantida em SQL versionado.
 
-# 8. Dependências entre camadas
+O histórico não deverá possuir exclusão automática no MVP.
+
+# 9. Dependências entre camadas
 
 As dependências deverão respeitar os seguintes princípios:
 
-1. A CLI depende da camada de aplicação.
+1. A CLI depende da aplicação.
 2. A aplicação coordena os casos de uso.
 3. Os módulos funcionais não dependem da CLI.
-4. O domínio não depende de infraestrutura.
-5. A infraestrutura implementa os recursos técnicos necessários.
-6. Os serviços compartilhados não devem concentrar regras de negócio.
-7. Não devem existir dependências circulares.
+4. Os módulos funcionais não acessam diretamente o SQLite.
+5. O domínio não depende da infraestrutura.
+6. A infraestrutura implementa os contratos utilizados pela aplicação.
+7. Os serviços compartilhados não concentram regras de negócio.
+8. Não devem existir dependências circulares.
 
-# 9. Convenções de nomenclatura
+# 10. Convenções de nomenclatura
 
 | Elemento | Convenção | Exemplo |
 |---|---|---|
@@ -488,15 +619,15 @@ As dependências deverão respeitar os seguintes princípios:
 | Constantes | UPPER_SNAKE_CASE | `DEFAULT_TIMEOUT` |
 | Testes | `test_` + nome | `test_hash_calculator.py` |
 
-Os nomes devem representar claramente a responsabilidade dos componentes.
+Os nomes deverão representar claramente a responsabilidade dos componentes.
 
-# 10. Implementação incremental
+# 11. Implementação incremental
 
-A estrutura será criada progressivamente conforme o backlog.
+A estrutura deverá ser criada progressivamente conforme o backlog.
 
 | Sprint | Estrutura principal |
 |---|---|
-| Sprint 1 | `cli/`, `application/`, `shared/` e inicialização |
+| Sprint 1 | `cli/`, `application/`, `shared/` e gerenciamento de instância |
 | Sprint 2 | `domain/` e `infrastructure/persistence/` |
 | Sprint 3 | `modules/file/` e `modules/hash/` |
 | Sprint 4 | `modules/password/`, `modules/url/` e `modules/network/` |
@@ -507,33 +638,34 @@ A criação de diretórios e arquivos deverá acompanhar a implementação real.
 
 Não criar arquivos vazios apenas para reproduzir o mapa.
 
-# 11. Itens técnicos ainda sujeitos a validação
+# 12. Itens técnicos sujeitos a validação
 
-Os seguintes detalhes precisam ser confirmados durante a consolidação técnica ou implementação:
-
-| ID | Item | Observação |
+| ID | Item | Situação |
 |---|---|---|
-| MAP-001 | Estratégia de migrations SQLite | A estrutura SQL inicial está prevista; o mecanismo de evolução ainda precisa ser definido |
-| MAP-002 | Precedência da configuração TOML | Definir localização e comportamento quando o arquivo não existir |
-| MAP-003 | Contrato de execução | Detalhar o formato comum de resultados e estados |
-| MAP-004 | Tratamento de falha na persistência | Definir comportamento quando a ferramenta conclui, mas o histórico não pode ser gravado |
-| MAP-005 | Compatibilidade dos adaptadores | Validar diferenças entre Windows e Linux |
-| MAP-006 | Automação de testes | Validar o fluxo de CI antes de torná-lo obrigatório |
+| MAP-001 | Estratégia de migrations SQLite | Estrutura SQL inicial prevista; evolução do esquema deverá ser definida conforme necessidade |
+| MAP-002 | Localização do TOML | Definir durante a implementação |
+| MAP-003 | Contrato de execução | Estrutura geral definida; detalhes deverão seguir os contratos da aplicação |
+| MAP-004 | Falha na persistência | Separação entre resultado funcional e histórico definida |
+| MAP-005 | Bloqueio multiplataforma | Contrato previsto; implementação deverá ser validada em Windows e Linux |
+| MAP-006 | Automação de testes | Workflow previsto; validar antes de torná-lo obrigatório |
+| MAP-007 | Limites operacionais | Valores numéricos pendentes de testes e refinamento |
 
-Esses pontos não autorizam a inclusão de novas funcionalidades no MVP.
+Esses pontos não autorizam a inclusão de funcionalidades novas no MVP.
 
-# 12. Estado do documento
+# 13. Estado do documento
 
 | Critério | Situação |
 |---|---|
 | Estrutura geral | Definida |
 | Organização das camadas | Definida |
-| Módulos funcionais | Definidos |
+| Sete módulos funcionais | Definidos |
 | Responsabilidades | Definidas |
+| Entidades do domínio | Definidas |
+| Persistência | Mapeada |
+| Controle de instância | Mapeado |
+| Recuperação de execuções | Mapeada |
 | Organização dos testes | Definida |
-| Arquivos de configuração | Mapeados |
+| Configuração TOML | Definida |
 | Dependências entre camadas | Definidas |
 | Implementação incremental | Planejada |
-| Pendências técnicas | Identificadas |
-| Revisão de consistência | Pendente |
-
+| Revisão cruzada | Pendente |

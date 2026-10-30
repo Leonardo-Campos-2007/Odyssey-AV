@@ -1,9 +1,9 @@
 # REQUISITOS.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 1.0  
+**Versão:** 2.0  
 **Escopo:** MVP  
-**Status:** Primeira versão consolidada
+**Status:** Consolidado para revisão
 
 ---
 
@@ -11,11 +11,9 @@
 
 Este documento especifica os requisitos funcionais e não funcionais do Odyssey AV.
 
-Os requisitos estabelecem as funcionalidades que o sistema deverá oferecer e as condições de qualidade, segurança, confiabilidade e compatibilidade que deverão ser respeitadas durante seu desenvolvimento.
+Os requisitos estabelecem as funcionalidades que o sistema deverá oferecer e as condições de qualidade, segurança, confiabilidade, desempenho e compatibilidade que deverão ser respeitadas durante seu desenvolvimento.
 
 O escopo está limitado às sete ferramentas definidas para o MVP.
-
----
 
 # 2. Escopo funcional
 
@@ -23,15 +21,13 @@ O MVP será composto pelos seguintes módulos:
 
 | Código | Módulo | Descrição |
 |---|---|---|
-| FILE | Análise de arquivos | Inspeção de metadados e características de arquivos |
+| FILE | Análise de arquivos | Inspeção de metadados, assinaturas e características de arquivos |
 | HASH | Hash | Cálculo e comparação de hashes |
-| NETWORK | Diagnóstico de rede | Verificações de conectividade e DNS |
-| PASSWORD | Ferramentas de senha | Geração e avaliação local de senhas |
+| NETWORK | Diagnóstico de rede | Verificações de conectividade, DNS e IP público opcional |
+| PASSWORD | Ferramentas de senha | Geração segura e avaliação local de senhas |
 | URL | Análise de URL | Análise estrutural e identificação de indicadores suspeitos |
-| PROCESS | Monitoramento de processos | Listagem e consulta de processos |
-| HISTORY | Histórico e relatórios | Consulta e exportação de execuções |
-
----
+| PROCESS | Monitoramento de processos | Listagem, consulta e filtragem de processos |
+| HISTORY | Histórico e relatórios | Consulta e exportação das execuções registradas |
 
 # 3. Requisitos funcionais
 
@@ -45,6 +41,19 @@ O sistema deverá permitir a leitura de metadados de arquivos, incluindo nome, e
 
 O sistema deverá identificar assinaturas de formatos de arquivos selecionados, quando houver suporte para o formato analisado.
 
+Os formatos iniciais contemplados serão:
+
+- PE — Portable Executable.
+- ELF — Executable and Linkable Format.
+- PDF — Portable Document Format.
+- PNG — Portable Network Graphics.
+- JPEG — Joint Photographic Experts Group.
+- ZIP — formato de arquivo ZIP.
+- GZIP — formato de compressão GZIP.
+- Desconhecido — quando nenhuma assinatura suportada for identificada.
+
+A identificação de assinatura não deverá ser interpretada como validação integral do arquivo ou confirmação de segurança.
+
 ### RF-003 — Identificação de divergências
 
 O sistema deverá identificar possíveis divergências entre a extensão declarada e a assinatura identificada do arquivo.
@@ -53,7 +62,18 @@ O sistema deverá identificar possíveis divergências entre a extensão declara
 
 O sistema deverá apresentar as informações coletadas e os indicadores identificados durante a análise do arquivo.
 
----
+### RF-029 — Validação do tipo de recurso
+
+O sistema deverá aceitar somente arquivos regulares para análise.
+
+Deverá:
+
+- Rejeitar diretórios.
+- Não seguir links simbólicos automaticamente.
+- Rejeitar dispositivos, sockets e pipes.
+- Tratar arquivos que desapareçam ou sejam modificados durante a análise.
+- Respeitar as permissões do sistema operacional.
+- Não modificar o arquivo analisado.
 
 ## 3.2. Hash — HASH
 
@@ -63,21 +83,23 @@ O sistema deverá calcular o hash de arquivos utilizando o algoritmo SHA-256.
 
 ### RF-006 — Comparação de hashes
 
-O sistema deverá permitir a comparação do hash calculado com uma referência fornecida ou disponível localmente.
+O sistema deverá permitir comparar o hash calculado com uma referência fornecida explicitamente pelo usuário.
+
+O MVP não deverá utilizar uma base própria de hashes para essa comparação.
 
 ### RF-007 — Classificação da comparação
 
 O sistema deverá classificar o resultado da comparação como:
 
-- `MATCH`: hash correspondente.
-- `MISMATCH`: hash divergente.
-- `NO_REFERENCE`: referência indisponível.
+- `MATCH`: hash correspondente à referência.
+- `MISMATCH`: hash diferente da referência.
+- `NO_REFERENCE`: nenhuma referência fornecida.
 
 ### RF-008 — Verificação de integridade
 
-O sistema deverá permitir verificar a integridade de um arquivo por meio da comparação entre seu hash atual e uma referência previamente definida.
+O sistema deverá permitir verificar a integridade de um arquivo por meio da comparação entre seu hash atual e uma referência previamente fornecida pelo usuário.
 
----
+A correspondência deverá indicar igualdade entre os valores comparados, sem representar garantia absoluta de segurança do arquivo.
 
 ## 3.3. Diagnóstico de rede — NETWORK
 
@@ -93,11 +115,11 @@ O sistema deverá permitir realizar consultas DNS para verificar a resolução d
 
 O sistema deverá disponibilizar uma consulta opcional de IP público por meio de um serviço externo.
 
+A consulta deverá depender de solicitação explícita do usuário.
+
 ### RF-012 — Apresentação do diagnóstico
 
 O sistema deverá apresentar os resultados das verificações de rede, identificando falhas, respostas obtidas e operações que não puderam ser concluídas.
-
----
 
 ## 3.4. Ferramentas de senha — PASSWORD
 
@@ -113,11 +135,20 @@ O sistema deverá permitir configurar parâmetros da senha gerada, como comprime
 
 O sistema deverá permitir avaliar localmente características básicas de uma senha, apresentando indicadores relacionados à sua composição e qualidade estimada.
 
+A avaliação deverá ocorrer localmente, sem envio da senha a serviços externos.
+
 ### RF-016 — Proteção dos dados de senha
 
-O sistema deverá impedir que senhas geradas ou avaliadas sejam armazenadas no histórico, nos logs ou nos relatórios exportados.
+O sistema deverá impedir que senhas geradas ou avaliadas sejam armazenadas:
 
----
+- No histórico.
+- Nos logs.
+- Nos relatórios exportados.
+- Nos argumentos persistidos dos comandos.
+- Nas mensagens de erro.
+- Nos resumos e resultados estruturados.
+
+O sistema poderá registrar a execução do módulo, desde que armazene somente metadados operacionais e informações sanitizadas.
 
 ## 3.5. Análise de URL — URL
 
@@ -137,7 +168,7 @@ O sistema deverá identificar características potencialmente suspeitas em URLs,
 
 O sistema deverá realizar a análise estrutural da URL sem executar requisições automáticas ao endereço informado.
 
----
+A análise deverá ocorrer localmente, sem consultas DNS ou outras operações externas implícitas.
 
 ## 3.6. Monitoramento de processos — PROCESS
 
@@ -147,7 +178,11 @@ O sistema deverá permitir listar os processos em execução que estejam acessí
 
 ### RF-022 — Consulta de informações
 
-O sistema deverá apresentar informações disponíveis sobre os processos, incluindo PID, nome e métricas acessíveis.
+O sistema deverá apresentar informações disponíveis sobre os processos, incluindo:
+
+- PID.
+- Nome.
+- Métricas acessíveis do processo.
 
 ### RF-023 — Filtragem de processos
 
@@ -157,27 +192,77 @@ O sistema deverá permitir filtrar processos utilizando critérios disponíveis,
 
 O sistema deverá identificar e comunicar limitações de acesso às informações dos processos.
 
----
+Processos encerrados durante a consulta ou inacessíveis por limitações de permissão deverão ser tratados como informações indisponíveis, sem comprometer indevidamente a operação completa.
 
 ## 3.7. Histórico e relatórios — HISTORY
 
 ### RF-025 — Registro de execuções
 
-O sistema deverá registrar as execuções dos módulos, incluindo identificador, módulo utilizado, comando, estado e informações temporais disponíveis.
+O sistema deverá registrar as execuções dos módulos funcionais, incluindo:
+
+- Identificador da execução.
+- Identificador da instância da aplicação.
+- Módulo utilizado.
+- Comando normalizado.
+- Estado da execução.
+- Data e hora de início.
+- Data e hora de término, quando disponíveis.
+- Duração, quando disponível.
+- Resumo sanitizado.
+- Resultados associados.
+
+As execuções dos módulos FILE, HASH, NETWORK, PASSWORD, URL e PROCESS deverão ser registradas.
+
+Consultas e exportações do próprio módulo HISTORY não deverão gerar novos registros de execução.
 
 ### RF-026 — Consulta do histórico
 
-O sistema deverá permitir consultar execuções anteriores, utilizando filtros como módulo, período e estado.
+O sistema deverá permitir consultar execuções anteriores, utilizando filtros como:
+
+- Módulo.
+- Período.
+- Estado da execução.
+
+A consulta deverá permitir paginação ou limitação de resultados para evitar retornos excessivos.
 
 ### RF-027 — Consulta dos resultados
 
 O sistema deverá permitir consultar os resultados associados a uma execução específica.
 
+Os resultados deverão preservar a associação com a execução correspondente e apresentar informações estruturadas de acordo com o módulo responsável.
+
 ### RF-028 — Exportação de relatórios
 
 O sistema deverá permitir exportar informações do histórico e de seus resultados nos formatos JSON e CSV, respeitando as regras de privacidade.
 
----
+A exportação deverá permitir limitar os registros e campos selecionados, evitando geração de arquivos excessivamente grandes.
+
+### RF-030 — Recuperação de execuções interrompidas
+
+O sistema deverá identificar execuções que permaneceram no estado `RUNNING` após o encerramento inesperado de uma instância anterior.
+
+Após obter o mecanismo de bloqueio exclusivo da aplicação, deverá atualizar essas execuções para `INTERRUPTED`.
+
+A recuperação deverá utilizar o identificador da instância da aplicação e não depender exclusivamente do PID do sistema operacional.
+
+### RF-031 — Identificação da instância da aplicação
+
+Cada inicialização válida do Odyssey AV deverá possuir um identificador único de instância (`instance_id`).
+
+As execuções registradas deverão estar associadas à instância responsável por sua execução.
+
+O sistema deverá impedir a operação simultânea de múltiplas instâncias ativas no MVP, utilizando mecanismo de bloqueio exclusivo compatível com Windows e Linux.
+
+### RF-032 — Separação entre resultado funcional e histórico
+
+O sistema deverá apresentar separadamente:
+
+- O resultado funcional da operação solicitada.
+- A situação de persistência do histórico.
+
+Uma falha de persistência não deverá transformar automaticamente uma operação funcional bem-sucedida em falha funcional.
+
+Quando não for possível registrar uma execução ou seus resultados, a CLI deverá informar claramente essa condição.
 
 # 4. Requisitos não funcionais
 
@@ -190,8 +275,6 @@ O sistema deverá funcionar em ambientes Windows e Linux, respeitando as diferen
 ### RNF-002 — Isolamento de particularidades da plataforma
 
 As operações dependentes do sistema operacional deverão ser organizadas de forma que suas particularidades não comprometam a estrutura geral dos módulos.
-
----
 
 ## 4.2. Segurança
 
@@ -215,7 +298,7 @@ As operações que envolvam comunicação externa deverão ser explícitas, iden
 
 Os dados persistidos deverão manter integridade e consistência, evitando corrupção e associações inválidas entre execuções e resultados.
 
----
+O sistema deverá utilizar mecanismos adequados de integridade referencial e transações no banco de dados local.
 
 ## 4.3. Desempenho e utilização de recursos
 
@@ -231,7 +314,17 @@ As operações de rede deverão considerar limites de tempo de execução e trat
 
 O sistema deverá tratar falhas de execução sem comprometer desnecessariamente os demais módulos ou a integridade dos dados já registrados.
 
----
+### RNF-015 — Limitação de operações e resultados
+
+O sistema deverá estabelecer limites operacionais adequados para:
+
+- Leitura e processamento de arquivos.
+- Tempo de execução de operações externas.
+- Quantidade de processos consultados e resultados apresentados.
+- Quantidade de registros retornados pelo histórico.
+- Quantidade de registros e volume de dados exportados.
+
+Os valores numéricos deverão ser definidos durante o refinamento técnico e validados por testes. Não serão estabelecidos limites arbitrários nesta etapa documental.
 
 ## 4.4. Arquitetura e manutenção
 
@@ -251,7 +344,35 @@ As dependências externas deverão ser identificadas, justificadas e revisadas q
 
 O sistema deverá utilizar persistência local e configuração adequada ao ambiente do usuário, sem exigir obrigatoriamente infraestrutura remota para seu funcionamento.
 
----
+### RNF-016 — Separação de responsabilidades
+
+A arquitetura deverá manter responsabilidades distintas entre:
+
+- Interface de linha de comando.
+- Camada de aplicação.
+- Módulos funcionais.
+- Domínio.
+- Infraestrutura.
+
+Os módulos funcionais não deverão acessar diretamente o banco de dados SQLite.
+
+### RNF-017 — Configuração previsível
+
+O sistema deverá permitir configuração local opcional por arquivo TOML.
+
+A configuração deverá respeitar a seguinte precedência:
+
+1. Padrões internos.
+2. Valores definidos no arquivo TOML.
+3. Argumentos explicitamente fornecidos na CLI.
+
+A ausência do arquivo de configuração deverá ser permitida. Arquivos TOML inválidos deverão gerar mensagens claras de erro, sem que configurações inválidas sejam ignoradas silenciosamente.
+
+### RNF-018 — Consistência temporal e identificação
+
+As datas persistidas deverão utilizar UTC e formato consistente.
+
+Os registros de execução deverão manter associação inequívoca com o identificador da instância responsável por sua criação.
 
 # 5. Matriz de rastreabilidade
 
@@ -265,8 +386,8 @@ O sistema deverá utilizar persistência local e configuração adequada ao ambi
 | RF-013 a RF-016 | RN-005, RN-010 |
 | RF-017 a RF-020 | RN-003, RN-006 |
 | RF-021 a RF-024 | RN-008, RN-012 |
-| RF-025 a RF-027 | RN-009, RN-010 |
-| RF-028 | RN-005, RN-010, RN-011 |
+| RF-025 a RF-031 | RN-009, RN-010 |
+| RF-032 | RN-013 |
 
 ## 5.2. Requisitos não funcionais e áreas relacionadas
 
@@ -286,8 +407,10 @@ O sistema deverá utilizar persistência local e configuração adequada ao ambi
 | RNF-012 | Testabilidade |
 | RNF-013 | Dependências |
 | RNF-014 | Persistência e configuração |
-
----
+| RNF-015 | Limites operacionais |
+| RNF-016 | Separação de responsabilidades |
+| RNF-017 | Configuração |
+| RNF-018 | Consistência temporal e identificação |
 
 # 6. Limitações do MVP
 
@@ -306,8 +429,6 @@ Os requisitos deste documento não incluem:
 
 Essas funcionalidades não fazem parte dos requisitos da primeira versão.
 
----
-
 # 7. Premissas e restrições
 
 1. O Odyssey AV será uma ferramenta local, operada por linha de comando.
@@ -320,8 +441,9 @@ Essas funcionalidades não fazem parte dos requisitos da primeira versão.
 8. O histórico deverá armazenar somente informações necessárias.
 9. Os resultados deverão distinguir falhas, avisos e conclusões bem-sucedidas.
 10. O MVP deverá permanecer limitado aos sete módulos definidos.
-
----
+11. O sistema deverá permitir somente uma instância ativa por vez.
+12. A consulta e exportação do histórico não deverão gerar registros recursivos.
+13. O sistema deverá funcionar sem dependência obrigatória de serviços remotos, exceto nas operações externas explicitamente solicitadas.
 
 # 8. Critérios gerais de aceitação
 
@@ -329,30 +451,40 @@ O conjunto de requisitos será considerado atendido quando:
 
 - Os sete módulos estiverem implementados e acessíveis pela CLI.
 - Cada módulo executar as operações previstas.
-- Os resultados forem apresentados de forma compreensível.
+- Os resultados forem apresentados de forma compreensível e estruturada.
 - As regras de negócio forem respeitadas.
-- O histórico registrar adequadamente as execuções.
-- A exportação JSON e CSV funcionar.
-- Nenhum dado de senha for persistido.
+- Os formatos de assinatura definidos para FILE forem reconhecidos conforme o escopo.
+- A comparação de hashes utilizar referência fornecida pelo usuário.
+- Arquivos especiais não permitidos forem rejeitados.
 - Operações externas ocorrerem somente quando solicitadas.
+- Nenhum dado de senha for persistido.
+- O histórico registrar adequadamente as execuções funcionais.
+- Execuções interrompidas forem recuperadas conforme o mecanismo definido.
+- A aplicação impedir múltiplas instâncias ativas.
+- A falha de persistência for comunicada separadamente do resultado funcional.
+- A exportação JSON e CSV funcionar.
+- Os limites operacionais forem aplicados e testados.
+- A configuração TOML respeitar a precedência definida.
 - O sistema funcionar nos ambientes Windows e Linux suportados.
 - Os testes previstos forem executados e aprovados.
 - As falhas e limitações forem comunicadas sem produzir resultados enganosos.
-
----
 
 # 9. Estado do documento
 
 | Critério | Situação |
 |---|---|
 | Escopo funcional | Definido |
-| Requisitos funcionais | 28 definidos |
-| Requisitos não funcionais | 14 definidos |
+| Requisitos funcionais | 32 definidos |
+| Requisitos não funcionais | 18 definidos |
 | Regras de negócio relacionadas | Mapeadas |
+| Recuperação de execuções | Definida |
+| Identificação de instância | Definida |
+| Proteção de dados sensíveis | Definida |
+| Limites operacionais | Definidos conceitualmente |
+| Configuração TOML | Definida |
 | Limitações do MVP | Definidas |
 | Premissas e restrições | Definidas |
 | Critérios gerais de aceitação | Definidos |
-| Revisão de consistência | Pendente |
+| Revisão cruzada | Pendente |
 
-**Total:** 42 requisitos documentados.
-
+**Total:** 50 requisitos documentados.
