@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+src/odyssey_av/__init__.py
+src/odyssey_av/main.py
+src/odyssey_av.egg-info/PKG-INFO
+src/odyssey_av.egg-info/SOURCES.txt
+src/odyssey_av.egg-info/dependency_links.txt
+src/odyssey_av.egg-info/entry_points.txt
+src/odyssey_av.egg-info/requires.txt
+src/odyssey_av.egg-info/top_level.txt

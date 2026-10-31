@@ -1,0 +1,2 @@
+[console_scripts]
+odyssey = odyssey_av.main:main
