@@ -1,0 +1,1 @@
+"""Entidades, estados e regras centrais do domínio."""
