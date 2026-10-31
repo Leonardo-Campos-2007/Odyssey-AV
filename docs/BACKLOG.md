@@ -1,7 +1,7 @@
 # BACKLOG.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.1  
+**Versão:** 2.2  
 **Escopo:** MVP  
 **Status:** Consolidado para revisão cruzada
 
@@ -90,6 +90,8 @@ Como usuário, quero executar o Odyssey AV por uma interface de linha de comando
 - A estrutura deve respeitar a arquitetura modular definida.
 - A interface deve possuir comandos de ajuda.
 - A aplicação deve funcionar sem exigir privilégios administrativos.
+- A CLI deverá apresentar saídas textuais e JSON conforme o contrato definido.
+- Os códigos de saída deverão seguir o contrato documentado.
 
 **Tarefas técnicas:**
 
@@ -279,7 +281,6 @@ Como usuário, quero consultar o histórico de execuções para visualizar anál
 - TEC-024 — Implementar comandos de consulta na CLI.
 - TEC-096 — Implementar paginação e limites de consulta.
 - TEC-097 — Testar ausência de recursão no histórico.
-- TEC-112 — Bloquear consultas HISTORY em modo degradado.
 
 ### US-006 — Exportar relatórios
 
@@ -761,28 +762,28 @@ As Sprints terão duração aproximada de duas semanas. A distribuição represe
 
 # 7. Matriz de rastreabilidade
 
-A matriz relaciona os épicos aos requisitos e regras de negócio. O vínculo detalhado entre histórias, critérios de aceitação e casos de teste é apresentado na seção seguinte.
+A matriz relaciona os épicos aos requisitos e regras de negócio.
 
 | Épico | Requisitos relacionados | Regras relacionadas |
 |---|---|---|
-| EP-001 | RF-029 a RF-032; RNF-001, RNF-002, RNF-010 a RNF-013, RNF-016 a RNF-019 | RN-007, RN-009, RN-010, RN-012, RN-014 |
-| EP-002 | RF-025 a RF-028, RF-030 a RF-032; RNF-007, RNF-015, RNF-018, RNF-019 | RN-009, RN-010, RN-011, RN-013, RN-014 |
+| EP-001 | RF-029 a RF-033; RNF-001, RNF-002, RNF-010 a RNF-013, RNF-016 a RNF-018 | RN-007, RN-009, RN-010, RN-012, RN-014 |
+| EP-002 | RF-025 a RF-028, RF-030 a RF-033; RNF-007, RNF-015, RNF-018 | RN-009, RN-010, RN-011, RN-013, RN-014 |
 | EP-003 | RF-001 a RF-008, RF-029; RNF-003, RNF-004, RNF-008, RNF-015 | RN-001, RN-002, RN-003, RN-004, RN-010 |
 | EP-004 | RF-013 a RF-020; RNF-004, RNF-005, RNF-015 | RN-005, RN-006 |
 | EP-005 | RF-009 a RF-012; RNF-006, RNF-009, RNF-015 | RN-007 |
 | EP-006 | RF-021 a RF-024; RNF-001, RNF-002, RNF-015 | RN-008, RN-012 |
 | EP-007 | Requisitos funcionais e não funcionais aplicáveis ao MVP | Regras de negócio aplicáveis ao MVP |
 
-**Observação:** as referências RF/RNF/RN deverão ser conferidas na revisão global de `REQUISITOS.md` e `REGRAS-DE-NEGOCIO.md`. Esta matriz não autoriza criar requisitos ou regras que não estejam documentados.
+**Observação:** as referências RF/RNF/RN deverão ser conferidas na revisão global dos documentos correspondentes. Esta matriz não autoriza criar requisitos ou regras que não estejam documentados.
 
 # 8. Matriz de rastreabilidade dos critérios de aceitação e testes
 
-Os identificadores CT representam critérios verificáveis de aceitação. Os IDs de teste apontam para os casos documentados em `TESTES.md`.
+Os identificadores CT representam critérios verificáveis de aceitação. Os IDs de teste apontam para casos documentados em `TESTES.md` versão 2.2.
 
 | ID | História | Critério verificável | Testes relacionados |
 |---|---|---|---|
 | CT-001 | US-001 | Inicialização, organização dos comandos e ajuda da CLI | TC-CLI-001 a TC-CLI-011 |
-| CT-002 | US-002 | Configuração opcional, validação e precedência TOML | Testes de configuração em TESTES.md |
+| CT-002 | US-002 | Configuração opcional, validação e precedência TOML | TU-CONFIG-001 a TU-CONFIG-007 |
 | CT-003 | US-017 | Aquisição e exclusividade do bloqueio | TCO-001, TCO-002 |
 | CT-004 | US-017 | Liberação do bloqueio em encerramento normal e inesperado | TCO-003, TCO-004 |
 | CT-005 | US-017 | UUID distinto por inicialização e associação correta | TCO-006, TCO-007 |
@@ -791,12 +792,12 @@ Os identificadores CT representam critérios verificáveis de aceitação. Os ID
 | CT-008 | US-003, US-004 | Separação entre resultado funcional e persistência | TI-008, TR-006, TS-017 |
 | CT-009 | US-003, US-004 | Proteção contra persistência de segredos | TU-HIST-011, TU-HIST-015, TS-014 |
 | CT-010 | US-005 | Consultas por módulo, período e estado | TU-HIST-003 a TU-HIST-005 |
-| CT-011 | US-005 | Consultas sem recursão e com paginação | TU-HIST-009, TID-001 |
+| CT-011 | US-005 | Consultas sem recursão e com paginação | TU-HIST-009, TID-001, TU-HIST-003 a TU-HIST-005 |
 | CT-012 | US-006 | Exportação JSON e CSV válida | TU-HIST-006, TU-HIST-007, TI-004 |
 | CT-013 | US-006 | Exportação sem senhas ou segredos | TU-HIST-010, TS-009, TS-018 |
 | CT-014 | US-007 | Análise de metadados e assinaturas | TU-FILE-001, TU-FILE-013 a TU-FILE-020 |
 | CT-015 | US-007 | Rejeição de arquivos especiais e tratamento de links | TU-FILE-008 a TU-FILE-010, TS-011 a TS-013 |
-| CT-016 | US-007 | Tratamento de alteração ou desaparecimento de arquivo | TU-FILE-011, TU-FILE-012, TS-014 |
+| CT-016 | US-007 | Tratamento de alteração ou desaparecimento de arquivo | TU-FILE-011, TU-FILE-012 |
 | CT-017 | US-008 | Cálculo SHA-256 e processamento em blocos | TU-HASH-001, TU-HASH-002, TU-HASH-007 |
 | CT-018 | US-008 | Comparação de referência fornecida pelo usuário | TU-HASH-003 a TU-HASH-006 |
 | CT-019 | US-009 | Geração segura e validação de parâmetros | TU-PASS-001, TU-PASS-002, TU-PASS-005 |
@@ -804,20 +805,27 @@ Os identificadores CT representam critérios verificáveis de aceitação. Os ID
 | CT-021 | US-011 | Análise estrutural local sem requisições automáticas | TU-URL-001 a TU-URL-007 |
 | CT-022 | US-012 | Diagnóstico DNS, conectividade e timeout | TU-NET-001 a TU-NET-008 |
 | CT-023 | US-013 | Listagem e filtros de processos sem modificação | TU-PROC-001 a TU-PROC-007 |
-| CT-024 | US-017 | Recuperação de registros RUNNING anteriores | TU-HIST-013, TI-013, TS-016, TCO-005 |
+| CT-024 | US-017 | Recuperação de registros RUNNING anteriores | TI-013, TS-016, TCO-005 |
 | CT-025 | US-017 | Falha de recuperação resulta em modo degradado | TI-014, TS-019, TR-008 |
 | CT-026 | US-017 | Modo degradado impede novas gravações | TU-HIST-018, TS-021, TB-013 |
 | CT-027 | US-005, US-006, US-017 | HISTORY indisponível em modo degradado | TU-HIST-016, TU-HIST-017, TI-021, TS-020 |
 | CT-028 | US-017 | Ferramentas funcionais permanecem disponíveis em modo degradado | TI-015 a TI-020, TI-024 |
-| CT-029 | US-017 | Bloqueio exclusivo permanece ativo em modo degradado | TCO-008, TCO-009 |
-| CT-030 | US-017 | Nova inicialização tenta recuperar o histórico | TI-022, TS-023 |
+| CT-029 | US-017 | Bloqueio exclusivo permanece ativo em modo degradado | TCO-008, TCO-009, TS-025 |
+| CT-030 | US-017 | Nova inicialização tenta recuperar o histórico | TI-022 |
 | CT-031 | US-017 | Falha de recuperação não altera indevidamente registros antigos | TI-023, TR-007, TS-024 |
-| CT-032 | US-014 | Controles de segurança aplicados aos módulos | TS-001 a TS-018 |
-| CT-033 | US-015 | Fluxos completos e regressão aprovados | Testes de integração e regressão |
-| CT-034 | US-016 | Compatibilidade Windows/Linux | Testes de compatibilidade em TESTES.md |
-| CT-035 | US-017 | Modo degradado validado em Windows/Linux | TEC-119 e testes de plataforma |
+| CT-032 | US-014 | Controles de segurança aplicados aos módulos | TS-001 a TS-025 |
+| CT-033 | US-015 | Fluxos completos e regressão aprovados | TI-001 a TI-025 e suíte de regressão |
+| CT-034 | US-016 | Compatibilidade Windows/Linux | TPL-001 a TPL-014 |
+| CT-035 | US-017 | Modo degradado validado em Windows/Linux | TPL-013, TPL-014, TCO-008, TCO-009 |
 
-A matriz deverá ser mantida sincronizada com os IDs reais de testes e critérios de aceitação. Um ID não deverá ser considerado validado se o caso de teste correspondente ainda não estiver implementado ou definido.
+**Regras de rastreabilidade:**
+
+- Um CT deverá apontar somente para casos de teste existentes.
+- Um teste deverá verificar o comportamento descrito pelo critério.
+- Referências a tarefas TEC não substituem referências a casos de teste.
+- Um caso de teste definido não significa que o teste já foi implementado ou aprovado.
+- Critérios sem teste específico deverão ser identificados como pendentes de rastreabilidade.
+- A matriz deverá ser atualizada sempre que os IDs de `TESTES.md` forem alterados.
 
 # 9. Definition of Ready
 
@@ -895,18 +903,18 @@ Essas funcionalidades não deverão ser adicionadas às Sprints atuais.
 | Critério | Situação |
 |---|---|
 | Épicos | Definidos |
-| Histórias de usuário | Definidas |
+| Histórias de usuário | 17 definidas |
 | Prioridades | Definidas |
 | Dependências | Mapeadas e ajustadas |
 | Tarefas técnicas | Definidas |
 | Critérios de aceitação | Definidos |
-| Identificadores CT | Estruturados |
-| Planejamento de Sprints | Proposto |
+| Identificadores CT | 35 estruturados |
+| Planejamento de Sprints | 6 Sprints propostas |
 | Controle de instância | Incluído |
 | Recuperação de execuções | Incluída |
 | Modo degradado | Incluído |
 | Separação entre operação e persistência | Incluída |
-| Rastreabilidade | Estruturada |
+| Rastreabilidade de testes | Revisada |
 | Revisão cruzada | Em andamento |
 
 ---

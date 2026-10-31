@@ -1,7 +1,7 @@
 # TESTES.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.1  
+**Versão:** 2.2  
 **Escopo:** MVP  
 **Status:** Consolidado para revisão cruzada
 
@@ -11,33 +11,41 @@
 
 Este documento define a estratégia de testes do Odyssey AV.
 
-O objetivo é verificar se as funcionalidades implementadas atendem aos requisitos funcionais, às regras de negócio, aos requisitos não funcionais e aos controles de segurança definidos para o MVP.
+Os testes deverão verificar se as funcionalidades implementadas atendem aos requisitos funcionais, às regras de negócio, aos requisitos não funcionais e aos controles de segurança definidos para o MVP.
 
-Os testes deverão identificar falhas antes que uma funcionalidade seja considerada concluída.
+A estratégia contempla:
 
-A estratégia deverá contemplar os ambientes Windows e Linux, respeitando as particularidades de cada sistema operacional.
+- Testes unitários.
+- Testes de integração.
+- Testes funcionais da CLI.
+- Testes de segurança.
+- Testes de persistência e transações.
+- Testes de instância e concorrência.
+- Testes de configuração.
+- Testes de compatibilidade Windows e Linux.
+- Testes de regressão.
 
-Também deverá verificar o comportamento da aplicação em condições normais e degradadas, especialmente quando houver falha na recuperação ou persistência do histórico.
-
-# 2. Estratégia de testes
-
-O projeto utilizará principalmente:
-
-- **Testes unitários:** verificam funções, métodos e regras isoladamente.
-- **Testes de integração:** verificam a comunicação entre aplicação, módulos e infraestrutura.
-- **Testes funcionais da CLI:** verificam comandos, parâmetros, saídas e códigos de retorno.
-- **Testes de segurança:** verificam os controles definidos em `SEGURANCA.md`.
-- **Testes de persistência:** verificam integridade, transações e recuperação do histórico.
-- **Testes de instância:** verificam bloqueio exclusivo e identificação das instâncias.
-- **Testes de regressão:** verificam se alterações não quebraram funcionalidades existentes.
-
-A ferramenta principal será o `pytest`.
+A ferramenta principal será `pytest`.
 
 Os testes unitários deverão evitar dependências externas e utilizar simulações quando apropriado. Os testes de integração deverão utilizar recursos isolados e controlados.
 
-# 3. Testes unitários
+# 2. Estratégia de testes
 
-Os testes unitários deverão validar o comportamento individual das funcionalidades, sem depender de serviços externos ou de um banco de dados de produção.
+Os testes serão organizados de acordo com a responsabilidade e o nível de integração:
+
+| Categoria | Objetivo |
+|---|---|
+| Unitários | Verificar funções, métodos e regras isoladamente |
+| Integração | Verificar comunicação entre aplicação, módulos e infraestrutura |
+| CLI | Verificar comandos, parâmetros, saídas e códigos de retorno |
+| Segurança | Verificar os controles definidos em `SEGURANCA.md` |
+| Persistência | Verificar integridade, transações e recuperação do histórico |
+| Instância | Verificar bloqueio exclusivo e identificação das instâncias |
+| Configuração | Verificar arquivo TOML, validação e precedência |
+| Compatibilidade | Verificar comportamentos específicos de Windows e Linux |
+| Regressão | Verificar se alterações não quebraram funcionalidades existentes |
+
+# 3. Testes unitários
 
 ## 3.1. FILE — Análise de arquivos
 
@@ -48,13 +56,13 @@ Os testes unitários deverão validar o comportamento individual das funcionalid
 | TU-FILE-003 | Informar caminho inválido | Entrada rejeitada |
 | TU-FILE-004 | Analisar extensão incompatível com assinatura | Divergência identificada |
 | TU-FILE-005 | Analisar formato não suportado | Limitação informada |
-| TU-FILE-006 | Analisar arquivo sem permissão | Falha tratada sem interromper a aplicação |
+| TU-FILE-006 | Analisar arquivo sem permissão | Falha tratada |
 | TU-FILE-007 | Analisar arquivo vazio | Resultado válido |
 | TU-FILE-008 | Analisar diretório | Recurso rejeitado |
 | TU-FILE-009 | Analisar link simbólico | Link não seguido automaticamente |
 | TU-FILE-010 | Analisar dispositivo, socket ou pipe | Recurso rejeitado |
 | TU-FILE-011 | Arquivo desaparece durante a leitura | Falha tratada |
-| TU-FILE-012 | Arquivo é alterado durante a análise | Inconsistência detectada ou operação tratada como inconclusiva |
+| TU-FILE-012 | Arquivo é alterado durante a análise | Inconsistência detectada ou operação inconclusiva |
 | TU-FILE-013 | Analisar assinatura PE | Identificação correspondente |
 | TU-FILE-014 | Analisar assinatura ELF | Identificação correspondente |
 | TU-FILE-015 | Analisar assinatura PDF | Identificação correspondente |
@@ -154,7 +162,21 @@ Os testes unitários deverão utilizar respostas simuladas quando não for neces
 | TU-HIST-017 | Exportar HISTORY em modo degradado | Operação recusada |
 | TU-HIST-018 | Tentar gravar histórico em modo degradado | Nenhuma gravação realizada |
 
-# 4. Testes de integração
+# 4. Testes de configuração
+
+Os testes deverão verificar a configuração opcional por TOML, conforme a precedência definida em `REQUISITOS.md`.
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TU-CONFIG-001 | Inicializar sem arquivo TOML | Padrões internos utilizados |
+| TU-CONFIG-002 | Carregar arquivo TOML válido | Configurações reconhecidas |
+| TU-CONFIG-003 | Carregar arquivo TOML inválido | Erro claro; configuração inválida não ignorada |
+| TU-CONFIG-004 | Definir valor no padrão e no TOML | Valor do TOML prevalece |
+| TU-CONFIG-005 | Definir valor no TOML e na CLI | Argumento explícito da CLI prevalece |
+| TU-CONFIG-006 | Omitir parâmetro na CLI | Valor configurado ou padrão utilizado |
+| TU-CONFIG-007 | Informar valor incompatível com o tipo esperado | Configuração rejeitada com mensagem clara |
+
+# 5. Testes de integração
 
 Os testes de integração verificarão o funcionamento conjunto das camadas e dos módulos.
 
@@ -184,10 +206,11 @@ Os testes de integração verificarão o funcionamento conjunto das camadas e do
 | TI-022 | Corrigir indisponibilidade e reiniciar | Nova inicialização tenta recuperar o histórico |
 | TI-023 | Falhar durante transação de recuperação | Alterações incompletas revertidas quando aplicável |
 | TI-024 | Executar operação funcional em modo degradado | Resultado não apresentado como persistido |
+| TI-025 | Recuperar histórico com sucesso após inicialização anterior degradada | Aplicação retorna ao estado NORMAL após confirmação da recuperação |
 
 Os testes deverão confirmar que o modo degradado não altera as regras de segurança específicas dos módulos.
 
-# 5. Testes da CLI
+# 6. Testes da CLI
 
 Os comandos deverão ser testados considerando entradas válidas, inválidas e situações de falha.
 
@@ -222,7 +245,7 @@ Também deverão ser verificados:
 
 Os códigos de saída deverão seguir o contrato definido em `API.md`, após sua validação cruzada.
 
-# 6. Testes de segurança
+# 7. Testes de segurança
 
 Os testes de segurança deverão verificar os controles definidos em `SEGURANCA.md`.
 
@@ -237,7 +260,7 @@ Os testes de segurança deverão verificar os controles definidos em `SEGURANCA.
 | TS-007 | Informar entrada malformada | Entrada tratada com segurança |
 | TS-008 | Consultar banco | Consultas parametrizadas |
 | TS-009 | Exportar histórico | Nenhuma senha ou segredo exportado |
-| TS-010 | Executar sem privilégios administrativos | Aplicação informa limitações sem solicitar elevação automática |
+| TS-010 | Executar sem privilégios administrativos | Limitações informadas sem solicitar elevação automática |
 | TS-011 | Analisar diretório | Recurso rejeitado |
 | TS-012 | Analisar link simbólico | Link não seguido automaticamente |
 | TS-013 | Analisar dispositivo, socket ou pipe | Recurso rejeitado |
@@ -252,8 +275,9 @@ Os testes de segurança deverão verificar os controles definidos em `SEGURANCA.
 | TS-022 | Verificar mensagens do modo degradado | Indisponibilidade do histórico informada |
 | TS-023 | Verificar tentativa de armazenamento alternativo | Nenhum armazenamento alternativo utilizado |
 | TS-024 | Verificar registros antigos após falha de recuperação | Nenhum registro apresentado como recuperado sem confirmação |
+| TS-025 | Verificar manutenção do bloqueio em modo degradado | Bloqueio exclusivo permanece ativo |
 
-# 7. Testes de banco de dados
+# 8. Testes de banco de dados
 
 Os testes deverão verificar a integridade e o comportamento do SQLite.
 
@@ -275,7 +299,7 @@ Os testes deverão verificar a integridade e o comportamento do SQLite.
 | TB-014 | Verificar estado de registros após rollback | Estado efetivamente confirmado preservado |
 | TB-015 | Verificar acesso ao HISTORY em modo degradado | Consultas e exportações bloqueadas |
 
-# 8. Testes de transação e rollback
+# 9. Testes de transação e rollback
 
 A persistência deverá manter a consistência dos dados.
 
@@ -296,13 +320,11 @@ A estratégia deverá distinguir a transação de persistência do resultado da 
 
 A recuperação deverá ser tratada como uma operação transacional. A aplicação somente poderá assumir o estado operacional `NORMAL` depois da confirmação de que a recuperação foi concluída.
 
-# 9. Testes de instância e concorrência
+# 10. Testes de instância e concorrência
 
 O MVP permitirá somente uma instância ativa da aplicação.
 
-Portanto, os testes não deverão pressupor execução funcional concorrente entre diferentes instâncias.
-
-Deverão verificar:
+Os testes deverão verificar:
 
 - Aquisição do bloqueio exclusivo.
 - Impedimento de inicialização funcional de uma segunda instância.
@@ -326,7 +348,7 @@ Deverão verificar:
 
 Consultas e leituras concorrentes no SQLite poderão ser testadas isoladamente, sem violar a regra de instância única.
 
-# 10. Testes de idempotência
+# 11. Testes de idempotência
 
 No MVP, a idempotência será avaliada principalmente em operações de consulta e leitura.
 
@@ -341,7 +363,30 @@ No MVP, a idempotência será avaliada principalmente em operações de consulta
 
 Não será exigida idempotência artificial para operações que geram uma nova execução a cada chamada.
 
-# 11. Testes de regressão
+# 12. Testes de compatibilidade entre plataformas
+
+O Odyssey AV deverá funcionar em Windows e Linux.
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TPL-001 | Inicializar aplicação no Windows | Inicialização conforme contrato |
+| TPL-002 | Inicializar aplicação no Linux | Inicialização conforme contrato |
+| TPL-003 | Resolver caminhos no Windows | Caminhos tratados corretamente |
+| TPL-004 | Resolver caminhos no Linux | Caminhos tratados corretamente |
+| TPL-005 | Identificar recursos especiais no Windows | Recursos não permitidos rejeitados quando identificáveis |
+| TPL-006 | Identificar recursos especiais no Linux | Recursos não permitidos rejeitados |
+| TPL-007 | Consultar processos no Windows | Informações disponíveis apresentadas |
+| TPL-008 | Consultar processos no Linux | Informações disponíveis apresentadas |
+| TPL-009 | Adquirir bloqueio exclusivo no Windows | Exclusividade garantida |
+| TPL-010 | Adquirir bloqueio exclusivo no Linux | Exclusividade garantida |
+| TPL-011 | Recuperar histórico no Windows | Recuperação conforme contrato |
+| TPL-012 | Recuperar histórico no Linux | Recuperação conforme contrato |
+| TPL-013 | Entrar em modo degradado no Windows | Regras do modo degradado respeitadas |
+| TPL-014 | Entrar em modo degradado no Linux | Regras do modo degradado respeitadas |
+
+Os testes deverão distinguir falhas da aplicação de limitações legítimas da plataforma ou das permissões do usuário.
+
+# 13. Testes de regressão
 
 Sempre que uma funcionalidade for alterada, os testes relacionados deverão ser executados novamente.
 
@@ -357,13 +402,14 @@ Os testes de regressão deverão priorizar:
 - Persistência e exportação do histórico.
 - Tratamento de erros.
 - Proteção de dados sensíveis.
+- Configuração TOML.
 - Bloqueio de instância.
 - Recuperação de execuções interrompidas.
 - Separação entre resultado funcional e persistência.
 - Entrada e saída do modo degradado.
 - Compatibilidade entre Windows e Linux.
 
-# 12. Dados de teste
+# 14. Dados de teste
 
 Os testes deverão utilizar dados controlados e isolados.
 
@@ -379,12 +425,13 @@ Os testes deverão utilizar dados controlados e isolados.
 | Histórico | Execuções SUCCESS, PARTIAL, FAILED e INTERRUPTED |
 | Recuperação | Bancos de teste com execuções RUNNING e cenários de falha transacional |
 | Modo degradado | Banco indisponível, somente leitura ou com falha simulada de recuperação |
+| Configuração | Arquivos TOML válidos, inválidos e combinações de precedência |
 
 Não utilizar arquivos pessoais, senhas reais ou dados sensíveis nos testes.
 
 As amostras de arquivos deverão ser inofensivas e não executáveis durante os testes.
 
-# 13. Isolamento dos testes
+# 15. Isolamento dos testes
 
 Os testes deverão ser executados sem interferir no ambiente real do usuário.
 
@@ -403,28 +450,7 @@ Diretrizes:
 - Simular falhas de leitura, escrita e transação do SQLite.
 - Garantir que testes de modo degradado não dependam de indisponibilidade real do banco de produção.
 
-# 14. Compatibilidade entre plataformas
-
-O Odyssey AV deverá funcionar em Windows e Linux.
-
-Os testes deverão verificar os comportamentos que podem variar conforme o sistema operacional:
-
-- Caminhos e separadores de diretórios.
-- Permissões de arquivos.
-- Identificação de arquivos especiais.
-- Links simbólicos.
-- Consulta de processos.
-- Disponibilidade de métricas.
-- Bloqueio exclusivo de instância.
-- Encerramento inesperado e liberação de bloqueio.
-- Operações de rede.
-- Manipulação de arquivos temporários.
-- Comportamento do SQLite diante de falhas.
-- Entrada e saída do modo degradado.
-
-Os testes deverão distinguir falhas da aplicação de limitações legítimas da plataforma ou das permissões do usuário.
-
-# 15. Cobertura de testes
+# 16. Cobertura de testes
 
 A cobertura deverá ser acompanhada pelo `pytest-cov`.
 
@@ -436,12 +462,13 @@ Metas iniciais propostas:
 - Evitar que linhas críticas de tratamento de erros permaneçam sem testes.
 - Cobrir os caminhos de inicialização normal e degradada.
 - Cobrir os caminhos de falha e rollback da recuperação.
+- Cobrir a validação e a precedência da configuração TOML.
 
 A porcentagem de cobertura não deverá ser utilizada isoladamente como indicador de qualidade. Os testes precisam verificar comportamentos e resultados relevantes.
 
 Os limites definitivos poderão ser ajustados após a implementação da primeira versão executável.
 
-# 16. Ferramentas
+# 17. Ferramentas
 
 | Ferramenta | Finalidade |
 |---|---|
@@ -453,7 +480,7 @@ Os limites definitivos poderão ser ajustados após a implementação da primeir
 
 Não será necessário utilizar Docker, bancos externos ou ferramentas avançadas de testes no MVP.
 
-# 17. Critérios de aprovação
+# 18. Critérios de aprovação
 
 Uma funcionalidade poderá ser considerada testada quando:
 
@@ -470,7 +497,7 @@ Uma funcionalidade poderá ser considerada testada quando:
 
 A conclusão de uma tarefa no backlog deverá considerar os critérios de aceitação e os testes correspondentes.
 
-# 18. Rastreabilidade
+# 19. Rastreabilidade
 
 | Área | Documentos relacionados |
 |---|---|
@@ -484,13 +511,16 @@ A conclusão de uma tarefa no backlog deverá considerar os critérios de aceita
 
 Os IDs dos testes deverão ser associados aos critérios de aceitação das tarefas correspondentes no backlog.
 
-# 19. Estado do documento
+Referências a testes deverão utilizar identificadores existentes neste documento. Critérios de aceitação sem caso de teste específico deverão ser identificados como pendentes de rastreabilidade, não como testes já definidos.
+
+# 20. Estado do documento
 
 | Critério | Situação |
 |---|---|
 | Testes unitários | Definidos |
 | Testes de integração | Definidos |
 | Testes da CLI | Definidos |
+| Testes de configuração | Definidos |
 | Testes de segurança | Definidos |
 | Testes de banco | Definidos |
 | Transações e rollback | Definidos |
