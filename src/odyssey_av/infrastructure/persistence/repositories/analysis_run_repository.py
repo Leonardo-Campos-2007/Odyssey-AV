@@ -70,6 +70,36 @@ class AnalysisRunRepository:
             raise PersistenceError("Não foi possível consultar o histórico.") from exc
 
         return _to_entity(row) if row is not None else None
+    
+    def interrupt_runs_from_other_instances(
+        self,
+        current_instance_id: str,
+        finished_at: datetime,
+        summary: str,
+    ) -> int:
+        """Marca como INTERRUPTED as execuções RUNNING de outras instâncias.
+
+        A instrução é única, portanto atômica: em caso de falha, nenhuma
+        linha é alterada.
+        """
+        try:
+            with self._conn:
+                cursor = self._conn.execute(
+                    "UPDATE analysis_runs "
+                    "SET status = ?, finished_at = ?, summary = ? "
+                    "WHERE status = ? AND instance_id != ?",
+                    (
+                        ExecutionStatus.INTERRUPTED.value,
+                        _to_iso(finished_at),
+                        summary,
+                        ExecutionStatus.RUNNING.value,
+                        current_instance_id,
+                    ),
+                )
+        except sqlite3.Error as exc:
+            raise PersistenceError("Não foi possível recuperar as execuções interrompidas.") from exc
+
+        return cursor.rowcount   
 
 
 def _to_iso(value: datetime | None) -> str | None:
