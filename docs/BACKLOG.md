@@ -1,9 +1,9 @@
 # BACKLOG.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.2  
+**Versão:** 2.3  
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada
+**Status:** Revisado para consolidação documental
 
 ---
 
@@ -141,7 +141,8 @@ Como desenvolvedor, quero serviços compartilhados de configuração, validaçã
 - **Épico:** EP-001
 - **Prioridade:** P0
 - **Sprint:** 1 e 2, conforme as tarefas
-- **Dependências:** US-001, US-002 e US-003 para recuperação do histórico
+- **Dependências gerais:** US-001 e US-002
+- **Dependência específica da recuperação:** US-003 e US-004
 
 **História:**
 
@@ -181,6 +182,8 @@ Como usuário, quero que somente uma instância do Odyssey AV execute operaçõe
 
 - Na Sprint 1 serão implementados o bloqueio exclusivo, o identificador da instância e seu ciclo de vida.
 - Na Sprint 2 serão implementadas a recuperação do histórico e a transição para modo degradado, pois essas operações dependem do SQLite.
+- A recuperação deverá depender da conclusão das estruturas de persistência e dos contratos necessários de `AnalysisRun`.
+- A dependência da recuperação não deverá bloquear a implementação anterior do controle de instância.
 
 ## EP-002 — Persistência e histórico
 
@@ -189,7 +192,7 @@ Como usuário, quero que somente uma instância do Odyssey AV execute operaçõe
 - **Épico:** EP-002
 - **Prioridade:** P0
 - **Sprint:** 2
-- **Dependências:** US-001, US-002 e aquisição de instância de US-017
+- **Dependências:** US-001, US-002 e conclusão das tarefas TEC-085 e TEC-086 de US-017.
 
 **História:**
 
@@ -688,6 +691,18 @@ As Sprints terão duração aproximada de duas semanas. A distribuição represe
 - Estado operacional NORMAL e DEGRADED.
 - Bloqueio de novas gravações e HISTORY durante modo degradado.
 
+**Ordem técnica obrigatória:**
+
+1. Confirmar que o bloqueio exclusivo e o `instance_id` estão implementados.
+2. Implementar a persistência de `AnalysisRun`.
+3. Implementar a persistência de `AnalysisResult`.
+4. Garantir transações e integridade referencial.
+5. Implementar a recuperação de execuções anteriores.
+6. Implementar o modo degradado e seus controles.
+7. Validar recuperação bem-sucedida, falha de recuperação e nova tentativa em inicialização posterior.
+
+A recuperação não poderá ser implementada como dependência circular da persistência: ela deverá consumir os contratos e repositórios já disponibilizados por US-003 e US-004.
+
 ## Sprint 3 — Arquivos e integridade
 
 **Objetivo:** entregar as primeiras ferramentas de análise.
@@ -766,15 +781,17 @@ A matriz relaciona os épicos aos requisitos e regras de negócio.
 
 | Épico | Requisitos relacionados | Regras relacionadas |
 |---|---|---|
-| EP-001 | RF-029 a RF-033; RNF-001, RNF-002, RNF-010 a RNF-013, RNF-016 a RNF-018 | RN-007, RN-009, RN-010, RN-012, RN-014 |
-| EP-002 | RF-025 a RF-028, RF-030 a RF-033; RNF-007, RNF-015, RNF-018 | RN-009, RN-010, RN-011, RN-013, RN-014 |
+| EP-001 | RF-029 a RF-033; RNF-001, RNF-002, RNF-010 a RNF-013, RNF-016 a RNF-018 | RN-007, RN-009, RN-010, RN-012 |
+| EP-002 | RF-025 a RF-028, RF-030 a RF-033; RNF-007, RNF-015, RNF-018 | RN-009, RN-010, RN-011, RN-013 |
 | EP-003 | RF-001 a RF-008, RF-029; RNF-003, RNF-004, RNF-008, RNF-015 | RN-001, RN-002, RN-003, RN-004, RN-010 |
 | EP-004 | RF-013 a RF-020; RNF-004, RNF-005, RNF-015 | RN-005, RN-006 |
 | EP-005 | RF-009 a RF-012; RNF-006, RNF-009, RNF-015 | RN-007 |
 | EP-006 | RF-021 a RF-024; RNF-001, RNF-002, RNF-015 | RN-008, RN-012 |
 | EP-007 | Requisitos funcionais e não funcionais aplicáveis ao MVP | Regras de negócio aplicáveis ao MVP |
 
-**Observação:** as referências RF/RNF/RN deverão ser conferidas na revisão global dos documentos correspondentes. Esta matriz não autoriza criar requisitos ou regras que não estejam documentados.
+**Observação:** as referências RF/RNF/RN deverão ser conferidas na revisão global dos documentos correspondentes. A referência RN-014 foi removida porque não foi encontrada no `REGRAS-DE-NEGOCIO.md` 2.1 consultado. A rastreabilidade específica do modo degradado permanece pendente de identificação de regra correspondente ou de decisão documental.
+
+Esta matriz não autoriza criar requisitos ou regras que não estejam documentados.
 
 # 8. Matriz de rastreabilidade dos critérios de aceitação e testes
 
@@ -826,6 +843,7 @@ Os identificadores CT representam critérios verificáveis de aceitação. Os ID
 - Um caso de teste definido não significa que o teste já foi implementado ou aprovado.
 - Critérios sem teste específico deverão ser identificados como pendentes de rastreabilidade.
 - A matriz deverá ser atualizada sempre que os IDs de `TESTES.md` forem alterados.
+- A correspondência semântica entre cada critério e seus testes deverá ser validada na revisão cruzada final.
 
 # 9. Definition of Ready
 
@@ -869,15 +887,45 @@ A sequência principal de dependências é:
 7. US-005 e US-006 utilizam os registros persistidos e exigem estado operacional NORMAL.
 8. US-014, US-015 e US-016 validam o conjunto implementado.
 
-Os módulos funcionais não deverão acessar diretamente o SQLite.
+### 11.1. Dependências técnicas de US-017
 
-As operações de HISTORY não deverão criar novos registros de execução.
+Para evitar dependência circular, a história US-017 deverá ser acompanhada em duas etapas:
 
-A execução funcional deverá permanecer separada da persistência do histórico.
+**Etapa A — Controle de instância (Sprint 1):**
 
-Em modo degradado, os módulos funcionais poderão operar sem persistência, mas não poderão realizar gravações alternativas.
+- TEC-084 — Definir contrato de gerenciamento de instância.
+- TEC-085 — Implementar mecanismo de bloqueio exclusivo.
+- TEC-086 — Gerar UUID por inicialização.
+- TEC-087 — Implementar liberação do bloqueio.
+- TEC-089 — Implementar tratamento de falha na aquisição do bloqueio.
 
-Não existem dependências circulares planejadas.
+Essas tarefas não dependem da persistência SQLite.
+
+**Etapa B — Recuperação e modo degradado (Sprint 2):**
+
+- TEC-088 — Implementar recuperação de registros RUNNING anteriores.
+- TEC-090 — Criar testes de ciclo de vida e recuperação.
+- TEC-109 — Implementar estado operacional NORMAL e DEGRADED.
+- TEC-110 — Implementar transição para modo degradado diante de falha na recuperação.
+- TEC-111 — Impedir gravações no SQLite enquanto degradado.
+- TEC-112 — Bloquear consultas e exportações do HISTORY enquanto degradado.
+- TEC-113 — Informar indisponibilidade do histórico e não persistência.
+- TEC-114 — Garantir nova tentativa de recuperação em inicialização posterior.
+
+A Etapa B depende da conclusão dos contratos e mecanismos de persistência de US-003 e US-004.
+
+### 11.2. Regras gerais de dependência
+
+- Os módulos funcionais não deverão acessar diretamente o SQLite.
+- As operações de HISTORY não deverão criar novos registros de execução.
+- A execução funcional deverá permanecer separada da persistência do histórico.
+- Em modo degradado, os módulos funcionais poderão operar sem persistência, mas não poderão realizar gravações alternativas.
+- O controle de instância não deverá depender da conclusão da recuperação para ser implementado.
+- A recuperação não poderá ser considerada concluída antes da confirmação da transação.
+- A falha de recuperação deverá manter o estado persistido anterior.
+- Não existem dependências circulares planejadas no grafo de implementação.
+
+**Pendência técnica:** o comportamento após falha do SQLite durante uma sessão iniciada em modo NORMAL permanece sujeito à decisão arquitetural registrada em `ARQUITETURA.md`. O backlog não deverá antecipar uma transição automática para DEGRADED sem decisão explícita.
 
 # 12. Itens fora do backlog do MVP
 
@@ -902,11 +950,11 @@ Essas funcionalidades não deverão ser adicionadas às Sprints atuais.
 
 | Critério | Situação |
 |---|---|
-| Épicos | Definidos |
+| Épicos | 7 definidos |
 | Histórias de usuário | 17 definidas |
 | Prioridades | Definidas |
-| Dependências | Mapeadas e ajustadas |
-| Tarefas técnicas | Definidas |
+| Dependências | Mapeadas e revisadas |
+| Tarefas técnicas | 119 definidas |
 | Critérios de aceitação | Definidos |
 | Identificadores CT | 35 estruturados |
 | Planejamento de Sprints | 6 Sprints propostas |
@@ -914,7 +962,10 @@ Essas funcionalidades não deverão ser adicionadas às Sprints atuais.
 | Recuperação de execuções | Incluída |
 | Modo degradado | Incluído |
 | Separação entre operação e persistência | Incluída |
-| Rastreabilidade de testes | Revisada |
+| Rastreabilidade de testes | Referências existentes; correspondência semântica pendente de validação final |
+| Rastreabilidade RF/RNF | Referências existentes; revisão cruzada pendente |
+| Rastreabilidade RN | RN-014 removida; mapeamento do modo degradado pendente |
+| Dependência circular | Corrigida na estrutura de dependências |
 | Revisão cruzada | Em andamento |
 
 ---
