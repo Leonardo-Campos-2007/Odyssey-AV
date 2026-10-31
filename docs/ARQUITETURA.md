@@ -1,7 +1,7 @@
 # ARQUITETURA.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.1  
+**Versão:** 2.2  
 **Escopo:** MVP  
 **Status:** Consolidado para revisão cruzada
 
@@ -19,7 +19,7 @@ A arquitetura deverá garantir:
 - Compatibilidade com Windows e Linux.
 - Controle das operações de segurança.
 - Persistência local dos resultados.
-- Recuperação de execuções interrompidas.
+- Recuperação transacional de execuções interrompidas.
 - Comportamento previsível diante de falhas de persistência.
 - Possibilidade de evolução sem comprometer o MVP.
 
@@ -37,21 +37,31 @@ A lógica de negócio deverá permanecer independente dos detalhes de infraestru
 
 ```mermaid
 flowchart TD
-    U["Usuário"] --> CLI["CLI - Typer"]
+    USER["Usuário"] --> CLI["CLI - Typer"]
 
     subgraph APP["Camada de Aplicação"]
         UC["Casos de uso"]
         COORD["Coordenação das operações"]
-        CONTRACT["Contratos de execução e resultados"]
         LIFE["Ciclo de vida das execuções"]
         REC["Recuperação do histórico"]
-        MODE["Estado operacional: normal/degradado"]
+        MODE["Estado operacional"]
+        CONTRACT["Contratos de execução e persistência"]
     end
 
     subgraph DOMAIN["Domínio"]
         ENT["AnalysisRun / AnalysisResult"]
         RULES["Estados e regras de domínio"]
-        MODULES["FILE / HASH / NETWORK / PASSWORD / URL / PROCESS / HISTORY"]
+        RESULTS["Objetos e resultados estruturados"]
+    end
+
+    subgraph MODULES["Módulos funcionais"]
+        FILE["FILE"]
+        HASH["HASH"]
+        NET["NETWORK"]
+        PASS["PASSWORD"]
+        URL["URL"]
+        PROC["PROCESS"]
+        HIST["HISTORY"]
     end
 
     subgraph INFRA["Infraestrutura"]
@@ -60,7 +70,7 @@ flowchart TD
         LOCK["Bloqueio exclusivo"]
         OS["Adaptadores do SO"]
         FS["Sistema de arquivos"]
-        NET["Adaptadores de rede"]
+        NETWORK["Adaptadores de rede"]
         CONFIG["Configuração TOML"]
         LOG["Logs"]
     end
@@ -68,25 +78,58 @@ flowchart TD
     CLI --> UC
     UC --> COORD
     COORD --> LIFE
-    COORD --> MODULES
+    COORD --> FILE
+    COORD --> HASH
+    COORD --> NET
+    COORD --> PASS
+    COORD --> URL
+    COORD --> PROC
+    COORD --> HIST
     COORD --> MODE
+    COORD --> CONTRACT
+
     LIFE --> REC
-    REC --> REPO
-    COORD --> REPO
-    REPO --> SQLITE
     LIFE --> LOCK
-    MODULES --> FS
-    MODULES --> OS
-    MODULES --> NET
+    REC --> CONTRACT
+    CONTRACT --> REPO
+    REPO --> SQLITE
+
+    FILE --> FS
+    HASH --> FS
+    PROC --> OS
+    NET --> NETWORK
+
     UC --> CONFIG
     UC --> LOG
+
     COORD --> ENT
     ENT --> RULES
+    FILE --> RESULTS
+    HASH --> RESULTS
+    NET --> RESULTS
+    PASS --> RESULTS
+    URL --> RESULTS
+    PROC --> RESULTS
 ```
 
 O diagrama representa a organização lógica. As dependências concretas deverão respeitar os limites definidos neste documento.
 
-O módulo HISTORY deverá consultar e exportar dados por meio dos casos de uso e contratos da aplicação, sem acessar diretamente o SQLite.
+Os módulos funcionais não deverão acessar diretamente o SQLite.
+
+O HISTORY deverá receber dados por meio dos casos de uso e contratos da aplicação, sem acessar diretamente a infraestrutura de persistência.
+
+## 2.2. Princípios arquiteturais
+
+A implementação deverá respeitar:
+
+1. Responsabilidade única por componente.
+2. Dependências direcionadas às abstrações necessárias.
+3. Separação entre domínio, aplicação e infraestrutura.
+4. Independência dos módulos funcionais em relação à CLI.
+5. Persistência centralizada.
+6. Tratamento explícito de falhas.
+7. Ausência de dependências circulares.
+8. Testabilidade por substituição de dependências externas.
 
 # 3. Estilo arquitetural
 
@@ -122,6 +165,7 @@ Responsabilidades:
 - Exibir mensagens de erro e avisos.
 - Disponibilizar saídas legíveis e automatizáveis.
 - Traduzir resultados em códigos de saída.
+- Informar o estado operacional da aplicação quando relevante.
 
 A CLI não deverá implementar regras de negócio, acessar diretamente o banco, executar operações internas dos módulos ou persistir resultados por conta própria.
 
@@ -143,6 +187,7 @@ Responsabilidades:
 - Coordenar a identificação da instância ativa.
 - Executar a recuperação do histórico na inicialização.
 - Determinar se a aplicação está em modo normal ou degradado.
+- Impedir operações incompatíveis com o estado operacional.
 
 Casos de uso previstos:
 
@@ -186,7 +231,29 @@ Objetos internos:
 
 Esses objetos não constituem necessariamente entidades persistentes. A definição detalhada está em `MODELO-DE-DADOS.md`.
 
-## 4.4. Infraestrutura
+O domínio não deverá depender da CLI, do Typer ou de implementações concretas do SQLite.
+
+## 4.4. Módulos funcionais
+
+Os módulos implementam as operações específicas do Odyssey AV.
+
+Responsabilidades:
+
+- Executar as operações de sua área.
+- Validar condições específicas do processamento.
+- Utilizar adaptadores necessários por meio dos contratos definidos.
+- Produzir resultados estruturados.
+- Comunicar erros e limitações de maneira padronizada.
+
+Os módulos não deverão:
+
+- Acessar diretamente o SQLite.
+- Controlar o ciclo de vida global da aplicação.
+- Implementar comandos da CLI.
+- Alterar o estado operacional da aplicação.
+- Acessar diretamente outros módulos sem necessidade funcional documentada.
+
+## 4.5. Infraestrutura
 
 Responsável pela comunicação com recursos externos à lógica principal e pela implementação dos mecanismos técnicos definidos pelos contratos internos.
 
@@ -327,7 +394,7 @@ A aplicação deverá possuir dois estados operacionais:
 
 O estado operacional não substitui os estados de execução (`RUNNING`, `SUCCESS`, `PARTIAL`, `FAILED` e `INTERRUPTED`).
 
-O modo degradado deverá ser definido durante a inicialização, quando a recuperação do histórico não puder ser concluída.
+O estado operacional deverá ser definido durante a inicialização, depois da tentativa de recuperação do histórico.
 
 # 7. Dependências entre componentes
 
@@ -336,7 +403,7 @@ Regras:
 1. A CLI depende da camada de aplicação.
 2. A aplicação coordena os módulos funcionais.
 3. Os módulos não dependem diretamente da CLI.
-4. Os módulos não devem depender uns dos outros sem necessidade funcional.
+4. Os módulos não deverão depender uns dos outros sem necessidade funcional.
 5. A infraestrutura implementa mecanismos de acesso a recursos externos.
 6. A aplicação utiliza contratos para acessar a persistência.
 7. A infraestrutura não contém regras de negócio dos módulos.
@@ -368,7 +435,29 @@ Contrato de persistência
 SQLite Repository
 ```
 
-# 8. Fluxo de execução
+# 8. Inicialização e fluxo de execução
+
+## 8.1. Sequência de inicialização
+
+A inicialização deverá seguir a seguinte ordem:
+
+1. Carregar os padrões internos e a configuração opcional.
+2. Inicializar os serviços necessários à aplicação.
+3. Solicitar o bloqueio exclusivo.
+4. Impedir a execução caso outra instância detenha o bloqueio.
+5. Gerar o `instance_id` da nova inicialização válida.
+6. Verificar a disponibilidade da persistência.
+7. Executar a recuperação transacional das execuções anteriores em `RUNNING`.
+8. Confirmar a transação de recuperação.
+9. Definir o estado operacional `NORMAL`, se a recuperação for concluída.
+10. Definir o estado operacional `DEGRADED`, se a recuperação não puder ser concluída.
+11. Disponibilizar somente as operações permitidas pelo estado operacional.
+
+A aplicação não deverá aceitar operações funcionais antes de concluir essa sequência.
+
+A falha de aquisição do bloqueio impede a inicialização operacional. Ela não deverá ser confundida com falha de recuperação do histórico.
+
+## 8.2. Fluxo de execução em modo normal
 
 Uma operação funcional em modo normal deverá seguir o fluxo:
 
@@ -394,7 +483,7 @@ sequenceDiagram
 
 Operações PASSWORD deverão aplicar tratamento específico para impedir que valores de senha sejam enviados à persistência.
 
-## 8.1. Separação entre operação e persistência
+## 8.3. Separação entre operação e persistência
 
 O resultado funcional e a persistência do histórico são responsabilidades distintas.
 
@@ -414,7 +503,13 @@ Resposta:
 
 A falha de persistência não deverá transformar automaticamente uma operação funcional bem-sucedida em falha funcional.
 
-## 8.2. Ciclo de vida da execução
+A aplicação deverá informar que o resultado não foi registrado no histórico.
+
+Uma falha de persistência durante uma operação em estado `NORMAL` não implica automaticamente a transição para `DEGRADED`. O modo degradado descrito neste documento é acionado pela falha da recuperação inicial.
+
+O comportamento diante de falhas recorrentes de persistência durante uma sessão normal deverá respeitar o contrato de execução e os requisitos de persistência, sem inventar uma transição operacional não aprovada.
+
+## 8.4. Ciclo de vida da execução
 
 Estados persistidos:
 
@@ -462,7 +557,9 @@ O MVP permitirá somente uma instância ativa do Odyssey AV por vez.
 
 O controle utilizará mecanismo de bloqueio exclusivo compatível com Windows e Linux.
 
-O bloqueio deverá ser adquirido antes das operações funcionais. Se outra instância estiver ativa, a nova inicialização deverá ser impedida com mensagem clara.
+O bloqueio deverá ser adquirido antes da recuperação e das operações funcionais.
+
+Se outra instância estiver ativa, a nova inicialização deverá ser impedida com mensagem clara.
 
 ## 10.2. Identificação da instância
 
@@ -470,11 +567,23 @@ Cada inicialização válida deverá gerar um UUID para `instance_id`.
 
 As execuções daquela inicialização utilizarão o mesmo identificador. O identificador não deverá ser reutilizado.
 
-## 10.3. Recuperação de execuções
+## 10.3. Recuperação transacional de execuções interrompidas
 
 Após obter o bloqueio exclusivo, a aplicação deverá consultar execuções anteriores que permaneceram em `RUNNING`.
 
 As execuções pertencentes a instâncias anteriores deverão ser atualizadas para `INTERRUPTED`.
+
+A recuperação deverá ocorrer em uma transação controlada:
+
+1. Iniciar a transação.
+2. Consultar registros anteriores em `RUNNING`.
+3. Identificar os registros pertencentes a instâncias anteriores.
+4. Atualizar esses registros para `INTERRUPTED`.
+5. Atualizar os horários e resumos conforme os dados disponíveis.
+6. Confirmar a transação.
+7. Somente após a confirmação, considerar a recuperação concluída.
+
+A aplicação não deverá considerar uma recuperação bem-sucedida antes da confirmação da transação.
 
 A recuperação não deverá depender exclusivamente do PID, devido à possibilidade de reutilização pelo sistema operacional.
 
@@ -482,13 +591,15 @@ A recuperação não deverá depender exclusivamente do PID, devido à possibili
 
 Se o SQLite estiver indisponível ou ocorrer uma falha que impeça a conclusão da recuperação, a aplicação deverá entrar em modo degradado.
 
+A falha de qualquer etapa da transação deverá impedir que alterações parciais sejam consideradas recuperação concluída.
+
 O modo degradado deverá respeitar as seguintes regras:
 
 1. A aplicação deverá manter o bloqueio exclusivo durante a sessão.
 2. A falha de recuperação deverá ser comunicada ao usuário.
 3. As ferramentas funcionais FILE, HASH, NETWORK, PASSWORD, URL e PROCESS poderão continuar disponíveis.
 4. Nenhuma nova execução deverá ser apresentada como persistida.
-5. A aplicação não deverá tentar realizar gravações parciais no histórico como se a recuperação tivesse sido concluída.
+5. A aplicação não deverá realizar novas gravações no histórico.
 6. O módulo HISTORY deverá ficar indisponível para consultas e exportações.
 7. A CLI deverá informar que os resultados da sessão não serão armazenados no histórico.
 8. A falha de persistência deverá permanecer separada do resultado funcional das operações.
@@ -499,11 +610,25 @@ O modo degradado não deverá ser interpretado como recuperação bem-sucedida. 
 
 A decisão de permitir operações funcionais sem persistência não autoriza a criação de um mecanismo alternativo de armazenamento no MVP.
 
-## 10.5. Liberação do bloqueio
+Se a transação de recuperação falhar, os registros antigos deverão permanecer no estado efetivamente confirmado no SQLite. A aplicação não deverá afirmar que foram marcados como `INTERRUPTED` sem confirmação.
+
+## 10.5. Retomada do modo normal
+
+A recuperação será tentada novamente em uma inicialização posterior.
+
+A aplicação somente deverá iniciar em modo `NORMAL` quando conseguir concluir a recuperação do histórico e confirmar a disponibilidade da persistência.
+
+Não está prevista uma tentativa de recuperação em segundo plano durante a sessão degradada no MVP.
+
+O cenário de recuperação bem-sucedida após uma inicialização anterior degradada deverá ser validado pelos testes de integração.
+
+## 10.6. Liberação do bloqueio
 
 O bloqueio deverá ser liberado no encerramento normal.
 
 Em encerramentos inesperados, o mecanismo do sistema operacional deverá permitir a liberação quando o processo responsável deixar de existir.
+
+O bloqueio deverá permanecer ativo enquanto a aplicação estiver operando em modo degradado.
 
 # 11. Segurança arquitetural
 
@@ -523,6 +648,8 @@ Diretrizes:
 12. Não seguir links simbólicos automaticamente durante análise de arquivos.
 13. Separar resultados funcionais de falhas de persistência.
 14. Informar quando a aplicação estiver operando em modo degradado.
+15. Não iniciar operações funcionais antes da aquisição do bloqueio exclusivo.
+16. Não permitir gravações ou consultas HISTORY durante o modo degradado.
 
 Os controles detalhados serão especificados em `SEGURANCA.md`.
 
@@ -538,6 +665,7 @@ Categorias:
 | Falha de processamento | Erro durante análise |
 | Falha de persistência | Erro ao registrar histórico |
 | Falha de recuperação | Erro ao atualizar execuções antigas |
+| Falha na aquisição do bloqueio | Outra instância ativa |
 | Recurso incompatível | Operação não suportada na plataforma |
 | Execução interrompida | Processo encerrado antes da conclusão |
 
@@ -611,6 +739,7 @@ A arquitetura deverá permitir:
 - Testes de concorrência.
 - Testes de regressão.
 - Testes do modo degradado.
+- Testes de recuperação bem-sucedida após inicialização degradada.
 
 A especificação detalhada será mantida em `TESTES.md`.
 
@@ -653,6 +782,8 @@ A possibilidade de evolução futura para recursos antimalware não justifica im
 | ARC-011 | Recuperação de execuções | Evitar registros indefinidamente em RUNNING |
 | ARC-012 | Separação entre operação e persistência | Preservar o resultado funcional diante de falha no histórico |
 | ARC-013 | Modo degradado após falha de recuperação | Preservar disponibilidade sem declarar o histórico consistente |
+| ARC-014 | Recuperação transacional | Evitar confirmação de recuperação parcial |
+| ARC-015 | Estado operacional independente | Separar disponibilidade da aplicação dos estados das execuções |
 
 Esses identificadores representam decisões documentadas, não arquivos ADR independentes.
 
@@ -666,11 +797,14 @@ Esses identificadores representam decisões documentadas, não arquivos ADR inde
 | Responsabilidades | Definidas |
 | Dependências | Definidas |
 | Fluxo de execução | Definido |
+| Inicialização | Definida |
 | Ciclo de vida das execuções | Definido |
 | Persistência | Definida conceitualmente |
 | Instância única | Definida |
-| Recuperação de execuções | Definida |
+| Recuperação transacional | Definida |
 | Modo degradado | Definido |
+| Retomada após modo degradado | Definida |
+| Separação entre operação e persistência | Definida |
 | Segurança arquitetural | Diretrizes definidas |
 | Tratamento de erros | Estruturado |
 | Observabilidade | Estruturada |
