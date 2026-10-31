@@ -1,9 +1,9 @@
 # REQUISITOS.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.1  
+**Versão:** 2.2<br>
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada
+**Status:** Consolidado após revisão cruzada
 
 ---
 
@@ -274,6 +274,10 @@ Quando não for possível registrar uma execução ou seus resultados, a CLI dev
 
 O sistema não deverá afirmar que os resultados foram registrados quando a persistência não tiver sido confirmada.
 
+Durante uma sessão iniciada em `NORMAL`, a falha de persistência será tratada por operação e não alterará o resultado funcional. A aplicação não deverá mudar automaticamente para `DEGRADED`; operações posteriores permanecerão disponíveis e farão suas próprias tentativas normais de persistência. Não haverá fila de gravações pendentes nem armazenamento alternativo, e dados cuja gravação falhou não serão recuperados posteriormente. Registros anteriormente confirmados permanecerão inalterados.
+
+Consultas `HISTORY` dependem da disponibilidade do SQLite. Se uma consulta ou exportação falhar por indisponibilidade do banco, a aplicação deverá comunicar a falha da operação solicitada, separadamente dos resultados de operações funcionais.
+
 ### RF-033 — Operação em modo degradado
 
 Caso a recuperação transacional do histórico falhe durante a inicialização, o sistema deverá entrar em modo operacional degradado.
@@ -293,6 +297,8 @@ Nesse estado:
 Uma nova tentativa de recuperação deverá ocorrer em uma inicialização posterior.
 
 O modo degradado deverá ser distinguido dos estados individuais das execuções.
+
+O estado operacional `DEGRADED` decorre exclusivamente da falha da recuperação transacional durante a inicialização. Uma falha de persistência isolada em uma sessão `NORMAL` não provoca essa transição.
 
 # 4. Requisitos não funcionais
 
@@ -420,7 +426,7 @@ Os registros de execução deverão manter associação inequívoca com o identi
 | RF-029 | RN-001, RN-010, RN-012 |
 | RF-030 a RF-031 | RN-009 |
 | RF-032 | RN-013 |
-| RF-033 | RN-009, RN-013 |
+| RF-033 | RN-009 |
 
 ## 5.2. Requisitos não funcionais e áreas relacionadas
 
@@ -498,6 +504,9 @@ O conjunto de requisitos será considerado atendido quando:
 - A recuperação do histórico ocorrer transacionalmente.
 - A aplicação impedir múltiplas instâncias ativas.
 - A falha de persistência for comunicada separadamente do resultado funcional.
+- Em uma sessão `NORMAL`, uma falha isolada de gravação não alterar o resultado funcional nem provocar transição automática para `DEGRADED`; uma operação posterior tentar persistir normalmente, sem fila ou armazenamento alternativo, e registros confirmados permanecerem inalterados.
+- Dados cuja gravação falhou durante uma sessão `NORMAL` não serem recuperados posteriormente.
+- Uma consulta ou exportação `HISTORY` comunicar erro quando o SQLite estiver indisponível.
 - O modo degradado preservar a disponibilidade dos módulos funcionais.
 - O modo degradado impedir novas gravações e operações de HISTORY.
 - Registros antigos não forem alterados quando a transação de recuperação falhar.
@@ -526,6 +535,6 @@ O conjunto de requisitos será considerado atendido quando:
 | Limitações do MVP | Definidas |
 | Premissas e restrições | Definidas |
 | Critérios gerais de aceitação | Definidos |
-| Revisão cruzada | Em andamento |
+| Revisão cruzada | Concluída |
 
 **Total: 51 requisitos documentados.**

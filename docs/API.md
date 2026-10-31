@@ -1,9 +1,9 @@
 # API.md — Contrato da Interface de Linha de Comando
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.0  
+**Versão:** 2.1<br>
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada  
+**Status:** Consolidado após revisão cruzada
 **Tipo de interface:** CLI local
 
 ---
@@ -234,6 +234,8 @@ odyssey password evaluate
 
 A senha avaliada deverá ser recebida de maneira que não seja exposta em argumentos visíveis do processo ou no histórico do terminal. O mecanismo de entrada deverá ser interativo e ocultar a digitação quando aplicável.
 
+A senha não deverá ser aceita diretamente como argumento de linha de comando. A senha gerada deverá ser apresentada somente na saída destinada ao usuário e não deverá ser persistida.
+
 **Restrições obrigatórias:**
 
 - Não persistir senhas.
@@ -381,7 +383,9 @@ O MVP deverá permitir somente uma instância ativa por vez, utilizando mecanism
 
 A recuperação deverá ocorrer após a aquisição do bloqueio exclusivo e antes da disponibilização de novas operações funcionais.
 
-A política de inicialização diante de falha na recuperação do histórico permanece dependente de decisão arquitetural específica. Até que essa decisão seja consolidada, não se deverá presumir que a recuperação malsucedida equivale a uma recuperação concluída.
+Se a recuperação transacional falhar durante a inicialização, a aplicação deverá entrar em modo operacional `DEGRADED`, manter o bloqueio exclusivo, manter disponíveis FILE, HASH, NETWORK, PASSWORD, URL e PROCESS sem novas gravações, e indisponibilizar consultas e exportações `HISTORY`. Registros antigos não poderão ser marcados como `INTERRUPTED` sem confirmação da transação, e a recuperação deverá ser tentada novamente em uma inicialização posterior.
+
+Durante uma sessão iniciada em `NORMAL`, uma falha de gravação afetará somente a persistência daquela operação. O resultado funcional será preservado e comunicado separadamente, sem transição automática para `DEGRADED`. Operações posteriores continuarão disponíveis e realizarão suas próprias tentativas normais de persistência. Não haverá fila em memória nem armazenamento alternativo, e dados cuja gravação falhou não serão recuperados posteriormente. Registros anteriormente confirmados permanecerão inalterados. Consultas ou exportações `HISTORY` que falharem por indisponibilidade do SQLite deverão retornar erro da operação solicitada.
 
 ## 6. Códigos de saída
 
@@ -392,7 +396,7 @@ A CLI deverá utilizar códigos de saída consistentes para permitir automação
 | `0` | Operação funcional concluída com sucesso e persistência confirmada quando aplicável. |
 | `1` | Falha na operação funcional. |
 | `2` | Uso inválido, argumento inválido ou entrada rejeitada antes da execução funcional. |
-| `3` | Operação funcional concluída com sucesso, mas falha na persistência do histórico. |
+| `3` | Operação funcional concluída com sucesso, mas o histórico não foi persistido, por falha de gravação em `NORMAL` ou por estar desabilitado em `DEGRADED`. |
 | `4` | Operação funcional parcialmente concluída. |
 
 ### 6.1. Precedência dos códigos
@@ -414,6 +418,8 @@ Quando mais de uma condição ocorrer, a CLI deverá aplicar a seguinte precedê
 | Falha | Persistido ou não persistido | `1` |
 | Parcial | Persistido ou não persistido | `4` |
 | Entrada inválida antes da operação | Não aplicável | `2` |
+| Sucesso funcional em `DEGRADED` | Histórico indisponível; nenhuma gravação tentada | `3` |
+| Falha de consulta ou exportação `HISTORY` | SQLite indisponível ou operação recusada em `DEGRADED` | `1` |
 
 Para comandos HISTORY, que não geram novos registros `AnalysisRun`, falhas de consulta ou exportação serão tratadas como falhas funcionais da operação solicitada.
 
@@ -492,7 +498,7 @@ Este contrato está relacionado aos requisitos e regras de negócio do MVP.
 
 **Requisitos funcionais:**
 
-- RF-001 a RF-032.
+- RF-001 a RF-033.
 
 **Requisitos não funcionais:**
 
@@ -526,8 +532,8 @@ Os critérios de aceitação deverão receber identificadores próprios `CT-XXX`
 | Registro de execuções | Definido |
 | Proteção de senhas | Definida |
 | Limites operacionais | Política definida; valores pendentes |
-| Rastreabilidade | Referências atualizadas; matriz global pendente |
-| Revisão cruzada | Em andamento |
+| Rastreabilidade | Referências revisadas e alinhadas com os requisitos, regras, backlog e testes |
+| Revisão cruzada | Concluída |
 
 ---
 

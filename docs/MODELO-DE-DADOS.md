@@ -1,9 +1,9 @@
 # MODELO-DE-DADOS.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.2  
+**Versão:** 2.3<br>
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada
+**Status:** Consolidado após revisão cruzada
 
 ---
 
@@ -66,7 +66,7 @@ Representa uma execução de uma ferramenta funcional do Odyssey AV.
 3. `command` deverá armazenar o comando normalizado, sem argumentos que possam conter senhas ou outros segredos.
 4. `summary` deverá ser sanitizado antes da persistência.
 5. O estado deverá representar o resultado funcional da execução, não exclusivamente a situação do armazenamento do histórico.
-6. Uma execução deverá ser registrada antes do processamento que dependa de seu acompanhamento pelo histórico, conforme o fluxo definido na arquitetura.
+6. A aplicação deverá tentar registrar uma execução antes do processamento. Durante uma sessão iniciada em `NORMAL`, se essa gravação falhar, a operação funcional ainda deverá ser executada, sem afirmar que o registro existe.
 7. Operações do módulo `HISTORY` não deverão criar registros de execução.
 8. Operações executadas durante o modo degradado não deverão ser apresentadas como persistidas.
 
@@ -237,6 +237,10 @@ A persistência deverá respeitar as seguintes regras:
 15. Durante o modo degradado, novas operações funcionais não deverão gerar registros no histórico.
 16. A aplicação não deverá utilizar armazenamento alternativo para substituir o SQLite no MVP.
 17. O histórico não deverá conter dados que não tenham sido efetivamente produzidos ou confirmados.
+18. Durante uma sessão iniciada em `NORMAL`, cada falha de gravação afetará somente a persistência da operação correspondente; não provocará transição automática para `DEGRADED`.
+19. Operações funcionais posteriores deverão realizar sua própria tentativa normal de persistência. Não haverá fila em memória ou armazenamento alternativo, e dados cuja gravação falhou não serão recuperados posteriormente.
+20. Registros anteriormente confirmados deverão permanecer inalterados quando uma gravação posterior falhar.
+21. Consultas e exportações `HISTORY` dependerão da disponibilidade do SQLite e deverão comunicar erro se a operação falhar.
 
 # 7. Ciclo de vida das execuções
 
@@ -330,8 +334,8 @@ Serão utilizados dois estados operacionais:
 
 | Estado | Significado |
 |---|---|
-| `NORMAL` | Recuperação concluída e persistência disponível |
-| `DEGRADED` | Recuperação do histórico falhou e a persistência não está disponível durante a sessão |
+| `NORMAL` | Recuperação transacional inicial concluída; operações funcionais e tentativas de persistência habilitadas |
+| `DEGRADED` | Recuperação transacional falhou durante a inicialização; novas gravações e operações HISTORY desabilitadas durante a sessão |
 
 Esses estados não serão armazenados como novos valores de `ExecutionStatus` ou `ResultStatus`.
 
@@ -381,7 +385,11 @@ Se uma operação funcional for concluída, mas sua gravação no histórico fal
 
 A aplicação deverá comunicar separadamente os dois resultados.
 
-**Ponto pendente de decisão:** o comportamento operacional após uma falha do SQLite durante uma sessão que iniciou em `NORMAL` ainda precisa ser definido. Este documento não estabelece uma transição automática para `DEGRADED`, nem autoriza novas gravações após uma falha persistente. Essa decisão deverá ser consolidada antes da implementação do fluxo correspondente.
+Durante uma sessão iniciada em `NORMAL`, a falha de persistência será tratada por operação. O resultado funcional deverá ser preservado e comunicado separadamente da situação do histórico. Uma falha de gravação não provocará transição automática para `DEGRADED`; as operações funcionais subsequentes continuarão disponíveis e farão suas próprias tentativas normais de persistência.
+
+Não haverá fila em memória para gravações pendentes nem armazenamento alternativo. Dados cuja gravação falhou não serão recuperados posteriormente, e registros anteriormente confirmados permanecerão inalterados. Consultas e exportações `HISTORY` dependerão da disponibilidade do SQLite e deverão comunicar erro quando falharem.
+
+O estado `DEGRADED` continuará reservado à falha da recuperação transacional durante a inicialização. Essa falha exige manter o bloqueio exclusivo, não realizar novas gravações e indisponibilizar consultas e exportações `HISTORY`, conforme as seções 8.1 e 8.2.
 
 # 9. Separação entre resultado funcional e persistência
 
@@ -408,7 +416,7 @@ Exemplo conceitual:
 - A aplicação deverá comunicar que o histórico não foi salvo.
 - A CLI deverá utilizar o código de saída previsto para operação concluída com falha de persistência.
 - Resultados não persistidos não poderão ser apresentados como disponíveis no histórico.
-- A aplicação deverá evitar perda desnecessária de informações produzidas, dentro dos limites do mecanismo de execução.
+- O resultado funcional produzido deverá ser apresentado ao usuário mesmo quando sua persistência falhar; isso não autoriza manter uma fila de gravações ou recuperar posteriormente dados não confirmados.
 - No modo degradado, a situação do histórico deverá ser comunicada como indisponível, sem sugerir que houve gravação bem-sucedida ou tentativa de gravação individual.
 
 A situação da persistência não exige uma terceira entidade no modelo de dados. Ela será representada pelo contrato de execução da aplicação e pela resposta da CLI.
@@ -553,11 +561,13 @@ Regras:
 | Proteção de PASSWORD | RF-016, RN-005 |
 | Separação da persistência | RNF-007, RNF-010, RNF-013 |
 | Dados em JSON | RNF-011, RNF-012 |
-| Modo degradado | RN-014, RNF-019 |
-| Recuperação transacional | Requisitos de recuperação e integridade do histórico |
-| HISTORY sem registro próprio | Regra de negócio de não recursividade |
+| Modo degradado após falha de recuperação na inicialização | RF-033, RN-009, DOM-011, ARC-013 |
+| Recuperação transacional | RF-030, RN-009, DOM-012, ARC-014 |
+| HISTORY sem registro próprio | RF-025, RN-009, DOM-014 |
+| Separação entre resultado funcional e persistência | RF-032, RN-013, DOM-010, ARC-012 |
+| Falha de persistência durante sessão NORMAL | RF-032, RN-013, DOM-010, ARC-012 |
 
-Os identificadores deverão ser conferidos na revisão cruzada final dos documentos. A rastreabilidade não deverá ser considerada validada enquanto houver referências inexistentes ou divergentes.
+Os identificadores foram conferidos na revisão cruzada dos documentos. As referências inexistentes ou divergentes foram corrigidas.
 
 # 15. Estado do documento
 
@@ -578,9 +588,9 @@ Os identificadores deverão ser conferidos na revisão cruzada final dos documen
 | Separação entre operação e histórico | Definida |
 | Persistência SQLite | Estruturada conceitualmente |
 | HISTORY sem registro próprio | Definido |
-| Falha de persistência durante sessão NORMAL | Pendente de decisão |
-| Rastreabilidade | Mapeada, aguardando validação cruzada |
-| Revisão cruzada | Em andamento |
+| Falha de persistência durante sessão NORMAL | Definida |
+| Rastreabilidade | Validada |
+| Revisão cruzada | Concluída |
 
 ---
 

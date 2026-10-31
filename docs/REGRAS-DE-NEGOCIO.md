@@ -1,9 +1,9 @@
 # REGRAS-DE-NEGOCIO.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.1  
+**Versão:** 2.2<br>
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada
+**Status:** Consolidado após revisão cruzada
 
 ---
 
@@ -266,6 +266,21 @@ O resultado funcional de uma operação deverá ser tratado separadamente da sit
 - Informações não persistidas não poderão ser apresentadas como se estivessem disponíveis no histórico.
 - A separação deverá ser preservada tanto na saída textual quanto na saída estruturada em JSON.
 
+### Tratamento de falha durante uma sessão NORMAL
+
+Durante uma sessão iniciada em `NORMAL`, a falha de persistência será tratada para cada operação. Ela afetará o registro da operação atual, sem alterar seu resultado funcional nem provocar transição automática para `DEGRADED`.
+
+- A aplicação deverá informar separadamente o resultado funcional e a situação do histórico.
+- As operações funcionais subsequentes continuarão disponíveis e deverão realizar sua própria tentativa normal de persistência.
+- Não haverá fila em memória para gravações pendentes nem armazenamento alternativo. Dados cuja gravação falhou não serão recuperados posteriormente.
+- Uma consulta `HISTORY` que falhar por indisponibilidade do SQLite deverá comunicar erro de persistência.
+- Registros anteriormente confirmados deverão permanecer inalterados.
+- O sistema não deverá afirmar que houve persistência sem confirmação.
+
+### Distinção da falha de recuperação na inicialização
+
+A falha isolada de persistência durante uma sessão `NORMAL` não altera o estado operacional da aplicação. `DEGRADED` continua reservado à falha da recuperação transacional durante a inicialização, conforme RN-009 e os contratos técnicos relacionados.
+
 # 4. Matriz de rastreabilidade
 
 | Regra | Módulo ou camada relacionada | Objetivo principal |
@@ -282,7 +297,7 @@ O resultado funcional de uma operação deverá ser tratado separadamente da sit
 | RN-010 | Todos | Minimizar dados persistidos |
 | RN-011 | HISTORY | Controlar exportações |
 | RN-012 | Todos | Comunicar limitações |
-| RN-013 | Aplicação, persistência e CLI | Separar operação e persistência |
+| RN-013 | Aplicação, persistência e CLI | Separar resultado funcional e persistência, inclusive diante de falha por operação em `NORMAL` |
 
 # 5. Observações para implementação
 
@@ -302,7 +317,7 @@ As regras acima definem o comportamento esperado do sistema. Os mecanismos técn
 | RN-010 | Sanitização de dados e logs |
 | RN-011 | Seleção e filtragem dos campos exportados |
 | RN-012 | Tratamento de exceções e mensagens de limitação |
-| RN-013 | Separação entre resultado funcional e persistência do histórico |
+| RN-013 | Separação entre resultado funcional e persistência; falha por operação em `NORMAL`, sem transição automática para `DEGRADED` |
 
 Esses mecanismos não substituem as regras de negócio; são formas de implementá-las.
 
@@ -320,7 +335,7 @@ Esses mecanismos não substituem as regras de negócio; são formas de implement
 | Separação entre operação e histórico | Definida |
 | Exportação | Definida |
 | Rastreabilidade | Consolidada estruturalmente |
-| Revisão cruzada | Em andamento |
+| Revisão cruzada | Concluída |
 
 **Total de regras:** 13.
 

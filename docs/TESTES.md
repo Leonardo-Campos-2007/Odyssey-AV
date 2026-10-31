@@ -1,9 +1,9 @@
 # TESTES.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.2  
+**Versão:** 2.3<br>
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada
+**Status:** Consolidado após revisão cruzada
 
 ---
 
@@ -207,6 +207,9 @@ Os testes de integração verificarão o funcionamento conjunto das camadas e do
 | TI-023 | Falhar durante transação de recuperação | Alterações incompletas revertidas quando aplicável |
 | TI-024 | Executar operação funcional em modo degradado | Resultado não apresentado como persistido |
 | TI-025 | Recuperar histórico com sucesso após inicialização anterior degradada | Aplicação retorna ao estado NORMAL após confirmação da recuperação |
+| TI-026 | Falhar gravação inicial ou final em uma operação durante sessão NORMAL e executar outra operação | A operação funcional é executada e seu resultado preservado; a seguinte tenta persistir normalmente, sem transição para DEGRADED, fila em memória ou armazenamento alternativo |
+| TI-027 | Falhar uma gravação após existirem registros confirmados | Registros anteriormente confirmados permanecem inalterados; dados não confirmados não são recuperados posteriormente |
+| TI-028 | Consultar e exportar HISTORY com SQLite indisponível durante sessão NORMAL | Operação solicitada informa erro de persistência e não é apresentada como sucesso |
 
 Os testes deverão confirmar que o modo degradado não altera as regras de segurança específicas dos módulos.
 
@@ -227,6 +230,11 @@ Os comandos deverão ser testados considerando entradas válidas, inválidas e s
 | TC-CLI-009 | `odyssey history list` | Consulta de histórico |
 | TC-CLI-010 | `odyssey history show` | Consulta de execução |
 | TC-CLI-011 | `odyssey history export` | Exportação de histórico |
+| TC-CLI-012 | Operação funcional com falha funcional | Código de saída `1` |
+| TC-CLI-013 | Operação funcional bem-sucedida com falha de persistência em NORMAL | Resultado funcional preservado, falha de histórico informada e código `3` |
+| TC-CLI-014 | Operação funcional com resultado parcial, inclusive com falha de persistência | Resultado parcial e código `4` |
+| TC-CLI-015 | Consulta ou exportação HISTORY com SQLite indisponível | Erro da operação HISTORY e código `1`, não código `3` |
+| TC-CLI-016 | Operação funcional bem-sucedida em DEGRADED | Histórico informado como indisponível, sem gravação, e código `3` |
 
 Também deverão ser verificados:
 
@@ -243,7 +251,7 @@ Também deverão ser verificados:
 - Indisponibilidade de comandos HISTORY em modo degradado.
 - Comunicação de que os resultados não serão persistidos.
 
-Os códigos de saída deverão seguir o contrato definido em `API.md`, após sua validação cruzada.
+Os códigos de saída deverão corresponder ao contrato definido em `API.md`, incluindo falhas funcionais, falhas de persistência, resultados parciais e falhas de consulta HISTORY.
 
 # 7. Testes de segurança
 
@@ -315,6 +323,8 @@ A persistência deverá manter a consistência dos dados.
 | TR-008 | Falha ao confirmar transação de recuperação | Aplicação entra em modo degradado |
 | TR-009 | Falha durante gravação em modo degradado | Nenhuma tentativa de gravação deverá ocorrer |
 | TR-010 | Recuperação concluída com sucesso | Registros anteriores atualizados conforme as regras de recuperação |
+| TR-011 | Falha isolada de gravação após registros previamente confirmados | Registros confirmados permanecem inalterados e dados não confirmados não são recuperados posteriormente |
+| TR-012 | Falha de consulta ou exportação HISTORY por indisponibilidade do SQLite | Erro da operação HISTORY comunicado, sem ser tratado como sucesso com falha de gravação |
 
 A estratégia deverá distinguir a transação de persistência do resultado da operação funcional. Uma falha de gravação não deverá alterar retroativamente o resultado funcional.
 
@@ -532,7 +542,7 @@ Referências a testes deverão utilizar identificadores existentes neste documen
 | Dados e isolamento | Definidos |
 | Compatibilidade Windows/Linux | Definida |
 | Cobertura | Meta inicial proposta |
-| Revisão cruzada | Em andamento |
+| Revisão cruzada | Concluída |
 
 ---
 

@@ -1,9 +1,9 @@
 # BACKLOG.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.3  
+**Versão:** 2.4<br>
 **Escopo:** MVP  
-**Status:** Revisado para consolidação documental
+**Status:** Revisado após auditoria documental
 
 ---
 
@@ -211,6 +211,10 @@ Como usuário, quero que as execuções das ferramentas sejam registradas para c
 - Execuções funcionais deverão ser registradas mesmo quando terminarem com falha, desde que a persistência esteja disponível.
 - Falhas de persistência deverão ser comunicadas separadamente do resultado funcional.
 - Nenhuma gravação deverá ser realizada em modo degradado.
+- Durante uma sessão iniciada em `NORMAL`, uma falha de gravação não deverá alterar o resultado funcional nem mudar automaticamente o estado para `DEGRADED`.
+- A falha ao registrar inicialmente `RUNNING` não deverá impedir a execução da operação funcional.
+- Cada operação funcional posterior deverá realizar sua própria tentativa normal de persistência; não haverá fila em memória ou armazenamento alternativo.
+- Registros anteriormente confirmados deverão permanecer inalterados; dados não confirmados não serão recuperados posteriormente.
 
 **Tarefas técnicas:**
 
@@ -221,7 +225,7 @@ Como usuário, quero que as execuções das ferramentas sejam registradas para c
 - TEC-016 — Implementar persistência de estados de execução.
 - TEC-091 — Implementar persistência de `instance_id`.
 - TEC-092 — Implementar estados RUNNING, SUCCESS, PARTIAL, FAILED e INTERRUPTED.
-- TEC-093 — Implementar separação entre resultado funcional e estado da persistência.
+- TEC-093 — Implementar separação entre resultado funcional e estado da persistência, com falha tratada por operação, sem transição automática para `DEGRADED` e com novas tentativas normais em operações posteriores.
 
 ### US-004 — Registrar resultados
 
@@ -243,6 +247,7 @@ Como usuário, quero que os resultados das análises sejam associados às suas e
 - A integridade referencial deve ser respeitada.
 - Mensagens e dados persistidos deverão ser sanitizados.
 - Resultados de operações PASSWORD não poderão conter valores de senha.
+- Uma falha ao persistir resultados não deverá alterar o resultado funcional nem os registros anteriormente confirmados.
 
 **Tarefas técnicas:**
 
@@ -276,6 +281,7 @@ Como usuário, quero consultar o histórico de execuções para visualizar anál
 - A consulta deverá respeitar limites e paginação.
 - Os filtros deverão utilizar consultas parametrizadas.
 - Consultas deverão ser recusadas em modo degradado.
+- Se o SQLite estiver indisponível durante uma sessão `NORMAL`, a falha da consulta deverá ser comunicada como erro da operação `HISTORY`.
 
 **Tarefas técnicas:**
 
@@ -306,6 +312,7 @@ Como usuário, quero exportar os resultados do histórico para arquivos JSON e C
 - Exportações não devem criar novas execuções.
 - A exportação deverá respeitar limites operacionais.
 - Exportações deverão ser recusadas em modo degradado.
+- Se o SQLite estiver indisponível durante uma sessão `NORMAL`, a falha da exportação deverá ser comunicada como erro da operação `HISTORY`.
 
 **Tarefas técnicas:**
 
@@ -781,21 +788,21 @@ A matriz relaciona os épicos aos requisitos e regras de negócio.
 
 | Épico | Requisitos relacionados | Regras relacionadas |
 |---|---|---|
-| EP-001 | RF-029 a RF-033; RNF-001, RNF-002, RNF-010 a RNF-013, RNF-016 a RNF-018 | RN-007, RN-009, RN-010, RN-012 |
-| EP-002 | RF-025 a RF-028, RF-030 a RF-033; RNF-007, RNF-015, RNF-018 | RN-009, RN-010, RN-011, RN-013 |
+| EP-001 | RF-030 (recuperação), RF-031 (instância), RF-032 (separação), RF-033 (modo degradado); RNF-001, RNF-002, RNF-010 a RNF-013, RNF-016 a RNF-018 | RN-007, RN-009, RN-010, RN-012 |
+| EP-002 | RF-025 a RF-028, RF-032 a RF-033; RNF-007, RNF-015, RNF-018 | RN-009, RN-010, RN-011, RN-013 |
 | EP-003 | RF-001 a RF-008, RF-029; RNF-003, RNF-004, RNF-008, RNF-015 | RN-001, RN-002, RN-003, RN-004, RN-010 |
 | EP-004 | RF-013 a RF-020; RNF-004, RNF-005, RNF-015 | RN-005, RN-006 |
 | EP-005 | RF-009 a RF-012; RNF-006, RNF-009, RNF-015 | RN-007 |
 | EP-006 | RF-021 a RF-024; RNF-001, RNF-002, RNF-015 | RN-008, RN-012 |
 | EP-007 | Requisitos funcionais e não funcionais aplicáveis ao MVP | Regras de negócio aplicáveis ao MVP |
 
-**Observação:** as referências RF/RNF/RN deverão ser conferidas na revisão global dos documentos correspondentes. A referência RN-014 foi removida porque não foi encontrada no `REGRAS-DE-NEGOCIO.md` 2.1 consultado. A rastreabilidade específica do modo degradado permanece pendente de identificação de regra correspondente ou de decisão documental.
+**Observação:** as referências RF/RNF/RN foram conferidas nos documentos correspondentes. A rastreabilidade do modo degradado aponta para o requisito e as decisões existentes que descrevem a falha de recuperação durante a inicialização.
 
 Esta matriz não autoriza criar requisitos ou regras que não estejam documentados.
 
 # 8. Matriz de rastreabilidade dos critérios de aceitação e testes
 
-Os identificadores CT representam critérios verificáveis de aceitação. Os IDs de teste apontam para casos documentados em `TESTES.md` versão 2.2.
+Os identificadores CT representam critérios verificáveis de aceitação. Os IDs de teste apontam para casos documentados em `TESTES.md` versão 2.3.
 
 | ID | História | Critério verificável | Testes relacionados |
 |---|---|---|---|
@@ -834,6 +841,11 @@ Os identificadores CT representam critérios verificáveis de aceitação. Os ID
 | CT-033 | US-015 | Fluxos completos e regressão aprovados | TI-001 a TI-025 e suíte de regressão |
 | CT-034 | US-016 | Compatibilidade Windows/Linux | TPL-001 a TPL-014 |
 | CT-035 | US-017 | Modo degradado validado em Windows/Linux | TPL-013, TPL-014, TCO-008, TCO-009 |
+| CT-036 | US-003, US-004 | Falha isolada de persistência preserva o resultado funcional e não altera o estado operacional | TI-008, TI-026, TR-006, TC-CLI-013 |
+| CT-037 | US-003 | Operação subsequente tenta persistir normalmente, sem fila ou armazenamento alternativo | TI-026 |
+| CT-038 | US-003, US-004 | Registros confirmados permanecem inalterados após falha de gravação | TI-027, TR-011 |
+| CT-039 | US-005, US-006 | Falha de consulta ou exportação HISTORY é comunicada como erro da operação | TI-028, TR-012, TC-CLI-015 |
+| CT-040 | US-001, US-003, US-005 | Códigos de saída distinguem falha funcional, falha de persistência, resultado parcial e falha HISTORY | TC-CLI-012 a TC-CLI-016 |
 
 **Regras de rastreabilidade:**
 
@@ -925,7 +937,7 @@ A Etapa B depende da conclusão dos contratos e mecanismos de persistência de U
 - A falha de recuperação deverá manter o estado persistido anterior.
 - Não existem dependências circulares planejadas no grafo de implementação.
 
-**Pendência técnica:** o comportamento após falha do SQLite durante uma sessão iniciada em modo NORMAL permanece sujeito à decisão arquitetural registrada em `ARQUITETURA.md`. O backlog não deverá antecipar uma transição automática para DEGRADED sem decisão explícita.
+Durante uma sessão iniciada em `NORMAL`, uma falha de gravação é tratada por operação, sem transição automática para `DEGRADED`. Operações posteriores fazem suas próprias tentativas de persistência. Não há fila em memória nem armazenamento alternativo; dados não confirmados não são recuperados posteriormente e registros confirmados permanecem inalterados. Falhas de consulta ou exportação `HISTORY` por indisponibilidade do SQLite são comunicadas como erro da operação solicitada.
 
 # 12. Itens fora do backlog do MVP
 
@@ -956,17 +968,17 @@ Essas funcionalidades não deverão ser adicionadas às Sprints atuais.
 | Dependências | Mapeadas e revisadas |
 | Tarefas técnicas | 119 definidas |
 | Critérios de aceitação | Definidos |
-| Identificadores CT | 35 estruturados |
+| Identificadores CT | 40 estruturados |
 | Planejamento de Sprints | 6 Sprints propostas |
 | Controle de instância | Incluído |
 | Recuperação de execuções | Incluída |
 | Modo degradado | Incluído |
 | Separação entre operação e persistência | Incluída |
-| Rastreabilidade de testes | Referências existentes; correspondência semântica pendente de validação final |
-| Rastreabilidade RF/RNF | Referências existentes; revisão cruzada pendente |
-| Rastreabilidade RN | RN-014 removida; mapeamento do modo degradado pendente |
+| Rastreabilidade de testes | Referências existentes e correspondência semântica validada |
+| Rastreabilidade RF/RNF | Referências existentes e revisão cruzada concluída |
+| Rastreabilidade RN | Modo degradado relacionado às regras existentes |
 | Dependência circular | Corrigida na estrutura de dependências |
-| Revisão cruzada | Em andamento |
+| Revisão cruzada | Concluída |
 
 ---
 

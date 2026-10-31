@@ -1,9 +1,9 @@
 # ARQUITETURA.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.2  
+**Versão:** 2.3<br>
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada
+**Status:** Consolidado após revisão cruzada
 
 ---
 
@@ -389,8 +389,8 @@ A aplicação deverá possuir dois estados operacionais:
 
 | Estado | Significado |
 |---|---|
-| `NORMAL` | Recuperação concluída e persistência disponível |
-| `DEGRADED` | Recuperação do histórico falhou; persistência indisponível durante a sessão |
+| `NORMAL` | Recuperação transacional inicial concluída; operações funcionais e tentativas de persistência habilitadas |
+| `DEGRADED` | Recuperação transacional falhou durante a inicialização; novas gravações e operações HISTORY desabilitadas durante a sessão |
 
 O estado operacional não substitui os estados de execução (`RUNNING`, `SUCCESS`, `PARTIAL`, `FAILED` e `INTERRUPTED`).
 
@@ -505,9 +505,13 @@ A falha de persistência não deverá transformar automaticamente uma operação
 
 A aplicação deverá informar que o resultado não foi registrado no histórico.
 
-Uma falha de persistência durante uma operação em estado `NORMAL` não implica automaticamente a transição para `DEGRADED`. O modo degradado descrito neste documento é acionado pela falha da recuperação inicial.
+Durante uma sessão iniciada em `NORMAL`, cada operação fará sua própria tentativa de persistência. Uma falha afetará o histórico daquela operação, sem alterar seu resultado funcional nem provocar transição automática para `DEGRADED`. A aplicação deverá comunicar separadamente o resultado funcional e a situação do histórico, e não poderá afirmar que os dados foram persistidos sem confirmação.
 
-O comportamento diante de falhas recorrentes de persistência durante uma sessão normal deverá respeitar o contrato de execução e os requisitos de persistência, sem inventar uma transição operacional não aprovada.
+Se falhar a gravação inicial de `RUNNING`, a aplicação ainda deverá executar a operação funcional. A falha dessa gravação não deverá impedir o módulo de produzir seu resultado.
+
+As operações funcionais subsequentes continuarão disponíveis e tentarão persistir normalmente. Não haverá fila em memória para gravações pendentes nem armazenamento alternativo; dados cuja gravação falhou não serão recuperados posteriormente. A falha de uma gravação não alterará registros anteriormente confirmados.
+
+Consultas e exportações de `HISTORY` dependem da disponibilidade do SQLite. Uma falha de consulta ou exportação deverá ser comunicada como erro da operação solicitada, sem ser tratada como sucesso funcional acompanhado de falha de gravação.
 
 ## 8.4. Ciclo de vida da execução
 
@@ -589,7 +593,7 @@ A recuperação não deverá depender exclusivamente do PID, devido à possibili
 
 ## 10.4. Falha durante a recuperação do histórico
 
-Se o SQLite estiver indisponível ou ocorrer uma falha que impeça a conclusão da recuperação, a aplicação deverá entrar em modo degradado.
+Se o SQLite estiver indisponível ou ocorrer uma falha que impeça a conclusão da recuperação transacional durante a inicialização, a aplicação deverá entrar em modo degradado. Essa é a única condição que provoca a transição operacional para `DEGRADED`; uma falha de persistência durante uma sessão `NORMAL` é tratada por operação conforme a seção 8.3.
 
 A falha de qualquer etapa da transação deverá impedir que alterações parciais sejam consideradas recuperação concluída.
 
@@ -811,7 +815,7 @@ Esses identificadores representam decisões documentadas, não arquivos ADR inde
 | Configuração | Estruturada |
 | Tecnologias | Definidas preliminarmente |
 | Estratégia de testes | Definida conceitualmente |
-| Revisão cruzada | Em andamento |
+| Revisão cruzada | Concluída |
 
 ---
 

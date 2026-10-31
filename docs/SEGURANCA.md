@@ -1,9 +1,9 @@
 # SEGURANCA.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.1  
+**Versão:** 2.2<br>
 **Escopo:** MVP  
-**Status:** Consolidado para revisão cruzada
+**Status:** Consolidado após revisão cruzada
 
 ---
 
@@ -307,6 +307,10 @@ A CLI deverá informar claramente as duas situações.
 
 O sistema não deverá afirmar que os dados foram registrados quando a persistência não tiver sido confirmada.
 
+Durante uma sessão iniciada em `NORMAL`, a falha será tratada por operação e não provocará transição automática para `DEGRADED`. As operações funcionais subsequentes permanecerão disponíveis e deverão tentar persistir normalmente. Não haverá fila em memória nem armazenamento alternativo; dados cuja gravação falhou não serão recuperados posteriormente, e registros anteriormente confirmados permanecerão inalterados.
+
+Consultas e exportações `HISTORY` dependem da disponibilidade do SQLite. Se uma consulta ou exportação falhar, a aplicação deverá informar erro da operação solicitada. Essa falha não deverá ser confundida com uma operação funcional bem-sucedida cuja gravação falhou.
+
 ## 6.2. Falha durante a recuperação do histórico
 
 A recuperação do histórico é uma condição necessária para iniciar o funcionamento normal da aplicação.
@@ -406,8 +410,8 @@ O estado operacional da aplicação deverá ser separado dos estados de execuç�
 
 | Estado | Significado |
 |---|---|
-| `NORMAL` | Recuperação concluída e persistência disponível |
-| `DEGRADED` | Recuperação do histórico falhou e a persistência está indisponível durante a sessão |
+| `NORMAL` | Recuperação transacional inicial concluída; operações funcionais e tentativas de persistência habilitadas |
+| `DEGRADED` | Recuperação transacional falhou durante a inicialização; novas gravações e operações HISTORY desabilitadas durante a sessão |
 
 Esses estados não substituem `RUNNING`, `SUCCESS`, `PARTIAL`, `FAILED` ou `INTERRUPTED`.
 
@@ -533,9 +537,9 @@ As referências deverão ser complementadas com links e versões específicas du
 | Proteção de senhas | RF-016, RN-005 |
 | Recuperação de execuções | RN-009 |
 | Separação entre operação e persistência | RN-013 |
-| Modo degradado | RN-014, RNF-019 |
-| Integridade do histórico | DOM-011, ARC-013 |
-| Bloqueio de consultas HISTORY | RF-029, RF-030 |
+| Modo degradado após falha de recuperação na inicialização | RF-033, RN-009, DOM-011, ARC-013 |
+| Bloqueio de consultas HISTORY em modo degradado | RF-033, DOM-011, ARC-013 |
+| Falha de persistência durante sessão NORMAL | RF-032, RN-013 |
 
 # 17. Estado do documento
 
@@ -556,7 +560,7 @@ As referências deverão ser complementadas com links e versões específicas du
 | Matriz de ameaças | Atualizada |
 | Testes de segurança | Especificados |
 | Limites do MVP | Definidos |
-| Revisão cruzada | Em andamento |
+| Revisão cruzada | Concluída |
 
 ---
 

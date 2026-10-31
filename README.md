@@ -155,6 +155,10 @@ O sistema deverá controlar a execução de uma única instância ativa no MVP e
 
 As consultas e exportações do histórico não deverão gerar novas execuções registradas.
 
+O histórico local utilizará SQLite para registrar as operações funcionais e recuperar execuções que permanecerem em `RUNNING` após uma interrupção inesperada. Se a recuperação transacional falhar durante a inicialização, a aplicação deverá operar em modo `DEGRADED`: as ferramentas funcionais permanecerão disponíveis, enquanto novas gravações e operações `HISTORY` ficarão indisponíveis.
+
+O resultado funcional será informado separadamente da situação do histórico. Uma falha isolada de gravação durante uma sessão `NORMAL` não provocará transição automática para `DEGRADED`; operações posteriores continuarão tentando persistir normalmente.
+
 ## 7. Compatibilidade
 
 A aplicação será planejada para:
