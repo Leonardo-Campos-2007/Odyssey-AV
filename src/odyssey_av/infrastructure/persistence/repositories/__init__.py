@@ -1,0 +1,1 @@
+"""Repositórios que traduzem entidades do domínio para o SQLite."""
