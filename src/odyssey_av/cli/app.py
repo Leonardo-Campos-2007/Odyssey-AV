@@ -8,6 +8,7 @@ from odyssey_av.cli.context import AppContext
 from odyssey_av.domain.enums import OperationalState
 from odyssey_av.shared.config.loader import load_config
 from odyssey_av.shared.logging.logger import configure_logging
+from odyssey_av.cli.commands.hash import hash_app
 
 app = typer.Typer(
     name="odyssey",
@@ -52,3 +53,4 @@ def root(
 
 
 app.command("status")(status_command)
+app.add_typer(hash_app, name="hash")
