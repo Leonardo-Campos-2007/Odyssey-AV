@@ -1,0 +1,1 @@
+"""Serviços de aplicação que coordenam operações transversais."""

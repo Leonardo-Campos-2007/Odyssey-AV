@@ -1,0 +1,1 @@
+"""Coordenação dos casos de uso e do fluxo de execução."""
