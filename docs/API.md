@@ -1,9 +1,9 @@
 # API.md — Contrato da Interface de Linha de Comando
 
 **Projeto:** Odyssey AV  
-**Versão:** 1.0  
+**Versão:** 2.0  
 **Escopo:** MVP  
-**Status:** Documento consolidado para revisão  
+**Status:** Consolidado para revisão cruzada  
 **Tipo de interface:** CLI local
 
 ---
@@ -83,6 +83,14 @@ Quando aplicável, poderá oferecer saída estruturada em JSON por meio de uma o
 
 A saída textual será o formato padrão.
 
+A saída estruturada deverá preservar a distinção entre:
+
+- Resultado da operação funcional.
+- Situação da persistência do histórico.
+- Resultados e avisos produzidos pelos módulos.
+
+Uma falha de persistência não poderá ser representada como falha funcional quando a operação tiver sido concluída com sucesso.
+
 ### 3.4. Configuração
 
 A CLI poderá receber opções explícitas e utilizar um arquivo TOML opcional.
@@ -127,6 +135,7 @@ odyssey file analyze <caminho>
 - Não seguir links simbólicos automaticamente.
 - Não processar dispositivos especiais, sockets ou pipes.
 - Respeitar permissões do usuário.
+- Tratar arquivos que desapareçam ou sejam modificados durante a análise.
 
 **Assinaturas inicialmente previstas:**
 
@@ -159,13 +168,14 @@ odyssey hash compare <caminho> --reference <sha256>
 **Entrada:**
 
 - Caminho de arquivo.
-- Referência SHA-256, obrigatória para uma comparação efetiva.
+- Referência SHA-256 para comparação.
 
 **Comportamento:**
 
 - Calcular SHA-256 sobre os bytes reais do arquivo.
 - Comparar o resultado com a referência fornecida.
 - Validar o formato da referência.
+- Informar o resultado da comparação.
 
 **Classificações:**
 
@@ -174,6 +184,8 @@ odyssey hash compare <caminho> --reference <sha256>
 | `MATCH` | Hash calculado igual à referência. |
 | `MISMATCH` | Hash calculado diferente da referência. |
 | `NO_REFERENCE` | Não foi fornecida referência para comparação. |
+
+O cálculo de hash poderá ser executado sem referência. A classificação `NO_REFERENCE` representa ausência de comparação, não falha no cálculo.
 
 O MVP não manterá uma base própria de hashes.
 
@@ -230,8 +242,9 @@ A senha avaliada deverá ser recebida de maneira que não seja exposta em argume
 - Não incluir senhas em argumentos registrados.
 - Não exportar senhas em relatórios.
 - Não manter a senha em `AnalysisResult`.
+- Não incluir a senha em resumos ou dados estruturados de saída que sejam destinados ao histórico.
 
-A execução do módulo poderá ser registrada, mas somente com metadados operacionais.
+A execução do módulo poderá ser registrada, mas somente com metadados operacionais e informações sanitizadas.
 
 ### 4.5. URL — Análise de endereços
 
@@ -316,6 +329,8 @@ odyssey history export --format csv
 
 Consultas e exportações do módulo HISTORY não gerarão novos registros `AnalysisRun`.
 
+Falhas na consulta ou exportação deverão ser comunicadas. A aplicação não deverá apresentar uma consulta incompleta ou uma exportação malsucedida como concluída.
+
 ## 5. Contrato de execução
 
 As operações funcionais deverão possuir estados próprios:
@@ -328,7 +343,9 @@ As operações funcionais deverão possuir estados próprios:
 
 O estado da operação não deverá ser confundido com o estado de persistência do histórico.
 
-### 5.1. Falha de persistência
+### 5.1. Separação entre operação e histórico
+
+O resultado funcional e o resultado da persistência deverão ser tratados separadamente.
 
 Quando uma operação for concluída, mas não puder ser registrada no SQLite, a CLI deverá comunicar separadamente:
 
@@ -358,7 +375,13 @@ A aplicação também não poderá afirmar que o histórico foi salvo quando a p
 
 Execuções que permanecerem em `RUNNING` após encerramento inesperado deverão ser identificadas pelo mecanismo de recuperação da aplicação e atualizadas para `INTERRUPTED`, quando for possível determinar que pertencem a uma instância encerrada.
 
-A identificação não deverá depender exclusivamente do PID, devido à possibilidade de reutilização desse identificador pelo sistema operacional.
+A identificação deverá utilizar o identificador lógico da instância. Não deverá depender exclusivamente do PID, devido à possibilidade de reutilização desse identificador pelo sistema operacional.
+
+O MVP deverá permitir somente uma instância ativa por vez, utilizando mecanismo de bloqueio exclusivo compatível com Windows e Linux.
+
+A recuperação deverá ocorrer após a aquisição do bloqueio exclusivo e antes da disponibilização de novas operações funcionais.
+
+A política de inicialização diante de falha na recuperação do histórico permanece dependente de decisão arquitetural específica. Até que essa decisão seja consolidada, não se deverá presumir que a recuperação malsucedida equivale a uma recuperação concluída.
 
 ## 6. Códigos de saída
 
@@ -366,13 +389,35 @@ A CLI deverá utilizar códigos de saída consistentes para permitir automação
 
 | Código | Significado |
 |---|---|
-| `0` | Operação concluída com sucesso e histórico persistido quando aplicável. |
+| `0` | Operação funcional concluída com sucesso e persistência confirmada quando aplicável. |
 | `1` | Falha na operação funcional. |
-| `2` | Uso inválido, argumento inválido ou entrada rejeitada. |
-| `3` | Operação funcional concluída, mas falha na persistência do histórico. |
-| `4` | Operação parcialmente concluída. |
+| `2` | Uso inválido, argumento inválido ou entrada rejeitada antes da execução funcional. |
+| `3` | Operação funcional concluída com sucesso, mas falha na persistência do histórico. |
+| `4` | Operação funcional parcialmente concluída. |
 
-Quando houver simultaneamente falha funcional e falha de histórico, o resultado deverá preservar as duas informações na saída. A precedência do código de saída deverá refletir a falha funcional.
+### 6.1. Precedência dos códigos
+
+Quando mais de uma condição ocorrer, a CLI deverá aplicar a seguinte precedência:
+
+1. **Código 2 — Entrada ou uso inválido:** utilizado quando a operação não puder ser iniciada devido a argumentos ou entradas inválidas.
+2. **Código 1 — Falha funcional:** utilizado quando a operação funcional falhar, mesmo que também ocorra falha na persistência do histórico.
+3. **Código 4 — Resultado parcial:** utilizado quando a operação produzir resultado parcial, mesmo que também ocorra falha na persistência do histórico.
+4. **Código 3 — Falha de persistência:** utilizado quando a operação funcional for concluída com sucesso, mas seu registro no histórico falhar.
+5. **Código 0 — Sucesso:** utilizado quando a operação funcional for concluída com sucesso e a persistência for confirmada, quando aplicável.
+
+### 6.2. Matriz de decisão
+
+| Resultado funcional | Histórico | Código |
+|---|---|---:|
+| Sucesso | Persistido | `0` |
+| Sucesso | Falha na persistência | `3` |
+| Falha | Persistido ou não persistido | `1` |
+| Parcial | Persistido ou não persistido | `4` |
+| Entrada inválida antes da operação | Não aplicável | `2` |
+
+Para comandos HISTORY, que não geram novos registros `AnalysisRun`, falhas de consulta ou exportação serão tratadas como falhas funcionais da operação solicitada.
+
+A saída deverá preservar as informações sobre ambas as situações quando houver falha funcional e falha de persistência simultâneas.
 
 Os códigos acima constituem o contrato proposto para o MVP e deverão ser verificados nos testes da CLI.
 
@@ -386,6 +431,7 @@ A CLI deverá apresentar mensagens que:
 - Não revelem senhas ou outros segredos.
 - Diferenciem falhas de entrada, permissão, disponibilidade, rede e persistência.
 - Não apresentem ausência de acesso como ausência de risco.
+- Diferenciem resultado funcional de falha no histórico.
 
 Detalhes técnicos poderão ser disponibilizados em modo de diagnóstico, desde que não exponham dados sensíveis.
 
@@ -396,6 +442,7 @@ As operações funcionais dos módulos FILE, HASH, NETWORK, PASSWORD, URL e PROC
 O registro deverá conter metadados operacionais, incluindo:
 
 - Identificador da execução.
+- Identificador da instância.
 - Módulo.
 - Comando normalizado.
 - Estado.
@@ -406,6 +453,8 @@ O registro deverá conter metadados operacionais, incluindo:
 Não deverão ser armazenados argumentos secretos, senhas ou conteúdo integral de arquivos.
 
 As consultas e exportações do HISTORY não gerarão novos registros de execução.
+
+O histórico deverá preservar execuções concluídas, parciais, malsucedidas e interrompidas, conforme a disponibilidade dos dados.
 
 ## 9. Limites operacionais
 
@@ -434,16 +483,35 @@ Em especial:
 - Não persistir senhas.
 - Utilizar consultas parametrizadas no SQLite.
 - Não realizar ações destrutivas sobre recursos do sistema.
+- Não registrar argumentos que contenham segredos.
+- Não apresentar informações não persistidas como se estivessem disponíveis no histórico.
 
 ## 11. Rastreabilidade
 
-Este contrato está relacionado aos seguintes requisitos:
+Este contrato está relacionado aos requisitos e regras de negócio do MVP.
 
-- RF-001 a RF-028.
-- RNF-001 a RNF-014.
-- RN-001 a RN-012.
+**Requisitos funcionais:**
 
-Os critérios específicos de aceitação e testes dos comandos deverão estar detalhados em `BACKLOG.md` e `TESTES.md`.
+- RF-001 a RF-032.
+
+**Requisitos não funcionais:**
+
+- RNF-001 a RNF-018.
+
+**Regras de negócio:**
+
+- RN-001 a RN-013.
+
+As referências acima indicam o conjunto documental relacionado ao contrato. Não significam que todos os requisitos e regras sejam implementados exclusivamente pela CLI.
+
+A rastreabilidade específica entre requisitos, regras, critérios de aceitação, histórias e testes deverá ser mantida nos documentos:
+
+- `REQUISITOS.md`
+- `REGRAS-DE-NEGOCIO.md`
+- `BACKLOG.md`
+- `TESTES.md`
+
+Os critérios de aceitação deverão receber identificadores próprios `CT-XXX` durante a consolidação do backlog.
 
 ## 12. Estado do documento
 
@@ -452,10 +520,15 @@ Os critérios específicos de aceitação e testes dos comandos deverão estar d
 | Organização dos comandos | Definida |
 | Contratos funcionais | Definidos |
 | Saída textual e JSON | Definida em nível conceitual |
-| Códigos de saída | Propostos |
+| Códigos de saída | Definidos como proposta documental |
+| Precedência dos códigos | Definida como proposta documental |
 | Tratamento de erros | Definido |
 | Registro de execuções | Definido |
 | Proteção de senhas | Definida |
 | Limites operacionais | Política definida; valores pendentes |
-| Revisão cruzada | Pendente |
+| Rastreabilidade | Referências atualizadas; matriz global pendente |
+| Revisão cruzada | Em andamento |
 
+---
+
+**Observação:** este documento especifica o contrato da interface CLI do MVP. Não representa uma API REST e não implica que os comandos estejam implementados.

@@ -1,9 +1,9 @@
 # ARQUITETURA.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Escopo:** MVP  
-**Status:** Consolidado para revisão
+**Status:** Consolidado para revisão cruzada
 
 ---
 
@@ -20,6 +20,7 @@ A arquitetura deverá garantir:
 - Controle das operações de segurança.
 - Persistência local dos resultados.
 - Recuperação de execuções interrompidas.
+- Comportamento previsível diante de falhas de persistência.
 - Possibilidade de evolução sem comprometer o MVP.
 
 # 2. Visão geral da arquitetura
@@ -30,76 +31,62 @@ A aplicação será executada localmente, por meio de uma interface de linha de 
 
 Os módulos funcionais compartilharão serviços transversais, como validação, configuração, logs, identificação de instância e persistência.
 
-A arquitetura deverá manter a lógica de negócio independente dos detalhes de infraestrutura, permitindo testar os módulos sem depender diretamente do sistema operacional ou do banco de dados.
+A lógica de negócio deverá permanecer independente dos detalhes de infraestrutura.
 
 ## 2.1. Modelo arquitetural
 
 ```mermaid
 flowchart TD
-    U["Usuário"]
-    CLI["CLI - Typer"]
+    U["Usuário"] --> CLI["CLI - Typer"]
 
     subgraph APP["Camada de Aplicação"]
         UC["Casos de uso"]
         COORD["Coordenação das operações"]
         CONTRACT["Contratos de execução e resultados"]
-        LIFECYCLE["Ciclo de vida das execuções"]
+        LIFE["Ciclo de vida das execuções"]
+        REC["Recuperação do histórico"]
+        MODE["Estado operacional: normal/degradado"]
     end
 
     subgraph DOMAIN["Domínio"]
         ENT["AnalysisRun / AnalysisResult"]
         RULES["Estados e regras de domínio"]
-        MODULES["Módulos funcionais"]
-        FILE["FILE"]
-        HASH["HASH"]
-        NETWORK["NETWORK"]
-        PASSWORD["PASSWORD"]
-        URL["URL"]
-        PROCESS["PROCESS"]
-        HISTORY["HISTORY"]
+        MODULES["FILE / HASH / NETWORK / PASSWORD / URL / PROCESS / HISTORY"]
     end
 
     subgraph INFRA["Infraestrutura"]
         REPO["Repositórios"]
         SQLITE["SQLite"]
-        FS["Sistema de arquivos"]
-        OS["Adaptadores do SO"]
-        NET["Adaptadores de rede"]
         LOCK["Bloqueio exclusivo"]
+        OS["Adaptadores do SO"]
+        FS["Sistema de arquivos"]
+        NET["Adaptadores de rede"]
         CONFIG["Configuração TOML"]
         LOG["Logs"]
     end
 
-    U --> CLI
     CLI --> UC
     UC --> COORD
-    COORD --> LIFECYCLE
+    COORD --> LIFE
     COORD --> MODULES
-    MODULES --> FILE
-    MODULES --> HASH
-    MODULES --> NETWORK
-    MODULES --> PASSWORD
-    MODULES --> URL
-    MODULES --> PROCESS
-    MODULES --> HISTORY
-
-    FILE --> FS
-    HASH --> FS
-    PROCESS --> OS
-    NETWORK --> NET
-
-    COORD --> ENT
-    ENT --> RULES
+    COORD --> MODE
+    LIFE --> REC
+    REC --> REPO
     COORD --> REPO
     REPO --> SQLITE
-    LIFECYCLE --> LOCK
+    LIFE --> LOCK
+    MODULES --> FS
+    MODULES --> OS
+    MODULES --> NET
     UC --> CONFIG
     UC --> LOG
+    COORD --> ENT
+    ENT --> RULES
 ```
 
-O diagrama representa a organização lógica da aplicação. As dependências concretas deverão respeitar os limites definidos neste documento.
+O diagrama representa a organização lógica. As dependências concretas deverão respeitar os limites definidos neste documento.
 
-O módulo HISTORY deverá consultar e exportar dados por meio dos casos de uso e dos contratos de persistência, sem acessar diretamente o SQLite.
+O módulo HISTORY deverá consultar e exportar dados por meio dos casos de uso e contratos da aplicação, sem acessar diretamente o SQLite.
 
 # 3. Estilo arquitetural
 
@@ -107,76 +94,57 @@ O módulo HISTORY deverá consultar e exportar dados por meio dos casos de uso e
 
 O Odyssey AV será desenvolvido como uma única aplicação, organizada internamente em módulos independentes por responsabilidade.
 
-Os módulos compartilharão o mesmo processo de execução e a mesma infraestrutura local, mas deverão manter limites claros de responsabilidade.
+Os módulos compartilharão o mesmo processo de execução e a mesma infraestrutura local, mantendo limites claros de responsabilidade.
 
 ### Justificativa
 
-A escolha de um monólito modular considera:
+- Escopo reduzido do MVP.
+- Execução local.
+- Ausência de necessidade de serviços distribuídos.
+- Simplicidade de implantação.
+- Facilidade de depuração e testes.
+- Menor custo de manutenção.
 
-- O escopo reduzido do MVP.
-- A execução local da ferramenta.
-- A ausência de necessidade de serviços distribuídos.
-- A simplicidade de implantação.
-- A facilidade de depuração e testes.
-- O baixo custo de manutenção.
-
-### Alternativas descartadas
-
-| Alternativa | Motivo |
-|---|---|
-| Microsserviços | Complexidade desnecessária para uma aplicação local |
-| Arquitetura distribuída | Não existe necessidade de comunicação entre serviços independentes |
-| Monólito sem módulos | Dificultaria a manutenção e aumentaria o acoplamento |
+Microsserviços e arquitetura distribuída não serão adotados no MVP por adicionarem complexidade sem necessidade funcional identificada.
 
 # 4. Organização em camadas
 
-A arquitetura será organizada em quatro camadas principais.
-
-## 4.1. Camada de apresentação — CLI
-
-Responsável pela interação entre o usuário e o sistema.
+## 4.1. Apresentação — CLI
 
 **Tecnologia:** Typer.
 
-### Responsabilidades
+Responsabilidades:
 
 - Receber comandos e argumentos.
 - Validar a estrutura básica dos parâmetros.
 - Encaminhar solicitações aos casos de uso.
 - Apresentar resultados.
 - Exibir mensagens de erro e avisos.
-- Disponibilizar formatos de saída legíveis e automatizáveis.
-- Traduzir os resultados da aplicação em códigos de saída da CLI.
+- Disponibilizar saídas legíveis e automatizáveis.
+- Traduzir resultados em códigos de saída.
 
-### Restrições
+A CLI não deverá implementar regras de negócio, acessar diretamente o banco, executar operações internas dos módulos ou persistir resultados por conta própria.
 
-A CLI não deverá:
-
-- Implementar regras de negócio.
-- Acessar diretamente o banco de dados.
-- Executar operações internas dos módulos.
-- Concentrar lógica de análise.
-- Controlar diretamente detalhes de infraestrutura.
-- Persistir resultados por conta própria.
-
-## 4.2. Camada de aplicação
+## 4.2. Aplicação
 
 Responsável por coordenar os casos de uso e controlar o fluxo das operações.
 
-### Responsabilidades
+Responsabilidades:
 
 - Receber solicitações da CLI.
 - Acionar os módulos correspondentes.
 - Coordenar a execução das operações.
-- Gerenciar o ciclo de vida de uma execução.
+- Gerenciar o ciclo de vida das execuções.
 - Aplicar validações necessárias.
-- Organizar os resultados.
-- Solicitar a persistência quando aplicável.
+- Organizar resultados.
+- Solicitar persistência quando aplicável.
 - Tratar falhas durante a execução.
-- Separar o resultado funcional da situação da persistência.
+- Separar resultado funcional da situação da persistência.
 - Coordenar a identificação da instância ativa.
+- Executar a recuperação do histórico na inicialização.
+- Determinar se a aplicação está em modo normal ou degradado.
 
-### Casos de uso previstos
+Casos de uso previstos:
 
 | Caso de uso | Responsabilidade |
 |---|---|
@@ -194,13 +162,11 @@ Responsável por coordenar os casos de uso e controlar o fluxo das operações.
 
 Os casos de uso representam operações da aplicação, não necessariamente classes obrigatórias.
 
-A aplicação deverá coordenar a persistência sem transferir essa responsabilidade diretamente aos módulos funcionais.
+## 4.3. Domínio
 
-## 4.3. Camada de domínio
+Responsável pelas entidades, estados, regras e estruturas que representam o funcionamento do Odyssey AV.
 
-Responsável pelas entidades, estados, regras e contratos que representam o funcionamento do Odyssey AV.
-
-### Elementos principais
+Elementos principais:
 
 - `AnalysisRun`
 - `AnalysisResult`
@@ -208,17 +174,7 @@ Responsável pelas entidades, estados, regras e contratos que representam o func
 - `ResultStatus`
 - `Module`
 
-### Responsabilidades
-
-- Representar as execuções e seus resultados.
-- Definir os estados válidos.
-- Preservar as regras de relacionamento entre entidades.
-- Definir estruturas de dados independentes de infraestrutura.
-- Garantir consistência das regras de domínio.
-
-### Objetos internos
-
-Os objetos abaixo poderão representar informações específicas das operações, sem necessariamente constituir entidades persistentes:
+Objetos internos:
 
 - `FileMetadata`
 - `HashReference`
@@ -228,13 +184,11 @@ Os objetos abaixo poderão representar informações específicas das operaçõe
 - `ProcessSnapshot`
 - `SecurityFinding`
 
-A definição detalhada das entidades e dos objetos está em `MODELO-DE-DADOS.md`.
+Esses objetos não constituem necessariamente entidades persistentes. A definição detalhada está em `MODELO-DE-DADOS.md`.
 
-## 4.4. Camada de infraestrutura
+## 4.4. Infraestrutura
 
-Responsável pela comunicação com recursos externos à lógica principal da aplicação e pela implementação dos mecanismos técnicos definidos pelos contratos internos.
-
-### Componentes previstos
+Responsável pela comunicação com recursos externos à lógica principal e pela implementação dos mecanismos técnicos definidos pelos contratos internos.
 
 | Componente | Responsabilidade |
 |---|---|
@@ -242,27 +196,17 @@ Responsável pela comunicação com recursos externos à lógica principal da ap
 | Filesystem Adapter | Acesso ao sistema de arquivos |
 | OS Adapter | Operações dependentes do sistema operacional |
 | Network Adapter | Operações de rede |
-| Instance Lock | Bloqueio exclusivo da aplicação |
+| Instance Lock | Bloqueio exclusivo |
 | Configuration Provider | Leitura de configurações |
 | Logging Provider | Registro operacional |
 
-### Diretrizes
-
-- A infraestrutura não deverá determinar regras de negócio.
-- Os módulos não deverão depender diretamente de detalhes do banco.
-- Operações dependentes do sistema operacional deverão ser isoladas.
-- O acesso ao SQLite deverá ser centralizado na infraestrutura de persistência.
-- A aplicação deverá depender de contratos, não de implementações concretas desnecessárias.
+O acesso ao SQLite deverá ser centralizado na infraestrutura. A aplicação dependerá de contratos, e não de implementações concretas desnecessárias.
 
 # 5. Módulos funcionais
 
-Cada módulo deverá possuir responsabilidades próprias e produzir resultados estruturados.
-
-Os módulos não deverão acessar diretamente o banco de dados SQLite.
+O MVP contempla exatamente sete módulos.
 
 ## 5.1. FILE — Análise de arquivos
-
-Responsabilidades:
 
 - Obter metadados.
 - Identificar formatos suportados.
@@ -270,66 +214,47 @@ Responsabilidades:
 - Identificar divergências.
 - Produzir resultados estruturados.
 
-Formatos iniciais:
-
-- PE.
-- ELF.
-- PDF.
-- PNG.
-- JPEG.
-- ZIP.
-- GZIP.
-- Desconhecido.
+Assinaturas iniciais: PE, ELF, PDF, PNG, JPEG, ZIP e GZIP, além da classificação como desconhecido.
 
 O módulo deverá aceitar arquivos regulares, rejeitar tipos de recursos não permitidos e respeitar as restrições de acesso definidas para o MVP.
 
 ## 5.2. HASH — Hash
-
-Responsabilidades:
 
 - Calcular SHA-256.
 - Comparar hashes.
 - Classificar resultados.
 - Verificar integridade.
 
-A comparação deverá utilizar uma referência fornecida pelo usuário. O módulo não deverá depender de uma base própria de hashes.
+A comparação utilizará uma referência fornecida pelo usuário. Não haverá base própria de hashes no MVP.
 
 ## 5.3. NETWORK — Diagnóstico de rede
-
-Responsabilidades:
 
 - Verificar conectividade.
 - Realizar consultas DNS.
 - Consultar IP público quando solicitado.
 - Organizar resultados das verificações.
 
-As operações externas deverão ocorrer somente mediante solicitação explícita.
+Operações externas deverão decorrer de solicitação explícita.
 
 ## 5.4. PASSWORD — Ferramentas de senha
-
-Responsabilidades:
 
 - Gerar senhas.
 - Avaliar características básicas.
 - Aplicar parâmetros de geração.
-- Impedir a persistência dos valores de senha.
+- Impedir persistência dos valores de senha.
 
-O módulo deverá utilizar mecanismos de geração aleatória segura e manter os valores de senha fora do histórico, logs e relatórios.
+Deverá utilizar geração aleatória segura e manter senhas fora do histórico, logs e relatórios.
 
 ## 5.5. URL — Análise de URL
-
-Responsabilidades:
 
 - Interpretar URLs.
 - Normalizar endereços.
 - Identificar indicadores suspeitos.
 - Produzir resultados sem acessar automaticamente o destino.
 
-A análise deverá ser local e não deverá realizar requisições HTTP ou consultas DNS implícitas.
+A análise será local, sem requisições HTTP ou consultas DNS implícitas.
 
 ## 5.6. PROCESS — Monitoramento de processos
-
-Responsabilidades:
 
 - Listar processos acessíveis.
 - Consultar PID e nome.
@@ -337,11 +262,9 @@ Responsabilidades:
 - Aplicar filtros.
 - Comunicar limitações de acesso.
 
-O módulo será exclusivamente informativo. Não poderá encerrar, suspender, modificar ou interferir na execução dos processos.
+Será exclusivamente informativo. Não poderá encerrar, suspender, modificar ou interferir na execução dos processos.
 
 ## 5.7. HISTORY — Histórico e relatórios
-
-Responsabilidades:
 
 - Consultar execuções anteriores.
 - Consultar resultados.
@@ -349,87 +272,79 @@ Responsabilidades:
 - Exportar JSON e CSV.
 - Preservar as regras de privacidade.
 
-O módulo não deverá acessar diretamente o SQLite. A consulta e a exportação deverão utilizar os contratos disponibilizados pela camada de aplicação.
+Não deverá acessar diretamente o SQLite. Consultas e exportações não gerarão novos registros `AnalysisRun`.
 
-Consultas e exportações não deverão gerar novos registros `AnalysisRun`.
+O HISTORY dependerá da disponibilidade do mecanismo de persistência. No modo degradado, suas operações deverão ser recusadas com mensagem clara.
 
 # 6. Serviços transversais
 
-Os serviços transversais serão compartilhados pela aplicação quando necessário.
-
 ## 6.1. Validação
 
-Responsável por validar entradas e parâmetros antes da execução das operações.
-
-Exemplos:
-
-- Caminhos de arquivos.
-- Parâmetros de geração de senhas.
-- URLs.
-- Filtros de processos.
-- Parâmetros de consultas de rede.
-
-A validação deverá respeitar as regras específicas de cada módulo.
+Validar entradas e parâmetros antes do processamento, respeitando as regras específicas de cada módulo.
 
 ## 6.2. Configuração
 
-Responsável por centralizar configurações do sistema.
+A configuração será local e poderá utilizar arquivo TOML.
 
-A configuração deverá ser local e poderá utilizar arquivo TOML.
-
-A precedência será:
+Precedência:
 
 1. Padrões internos.
-2. Valores definidos no arquivo TOML.
+2. Valores definidos no TOML.
 3. Argumentos explicitamente fornecidos na CLI.
 
-A ausência do arquivo deverá ser permitida. Arquivos inválidos deverão gerar erro claro.
+A ausência do arquivo será permitida. Arquivos inválidos deverão gerar erro claro.
 
 ## 6.3. Logs
 
-Responsável por registrar eventos operacionais relevantes.
+Registrar eventos operacionais relevantes.
 
-Os logs não substituirão o histórico de execuções.
-
-Deverão evitar informações sensíveis, especialmente senhas e argumentos secretos.
+Os logs não substituirão o histórico e deverão evitar informações sensíveis, especialmente senhas e argumentos secretos.
 
 ## 6.4. Identificação de instância
 
-Responsável por identificar uma inicialização válida da aplicação.
-
-Cada instância deverá possuir um `instance_id` único, utilizado para associar as execuções à inicialização correspondente.
+Cada inicialização válida deverá possuir um UUID `instance_id`, utilizado para associar as execuções à instância correspondente.
 
 ## 6.5. Ciclo de vida das execuções
 
-Responsável por coordenar:
+Coordenar:
 
-- Início de uma execução.
-- Registro do estado `RUNNING`.
+- Início de execução.
+- Registro de `RUNNING`.
 - Recebimento dos resultados.
 - Atualização do estado final.
 - Persistência dos resultados.
 - Recuperação de execuções interrompidas.
+- Tratamento de falhas de persistência.
 
-Esse serviço deverá manter separação entre o resultado funcional e a situação da persistência.
+## 6.6. Estado operacional da aplicação
+
+A aplicação deverá possuir dois estados operacionais:
+
+| Estado | Significado |
+|---|---|
+| `NORMAL` | Recuperação concluída e persistência disponível |
+| `DEGRADED` | Recuperação do histórico falhou; persistência indisponível durante a sessão |
+
+O estado operacional não substitui os estados de execução (`RUNNING`, `SUCCESS`, `PARTIAL`, `FAILED` e `INTERRUPTED`).
+
+O modo degradado deverá ser definido durante a inicialização, quando a recuperação do histórico não puder ser concluída.
 
 # 7. Dependências entre componentes
 
-A arquitetura deverá impedir dependências circulares e acoplamento desnecessário.
-
-### Regras de dependência
+Regras:
 
 1. A CLI depende da camada de aplicação.
 2. A aplicação coordena os módulos funcionais.
 3. Os módulos não dependem diretamente da CLI.
 4. Os módulos não devem depender uns dos outros sem necessidade funcional.
-5. A infraestrutura implementa os mecanismos de acesso a recursos externos.
-6. A aplicação deverá utilizar contratos para acessar a persistência.
-7. A infraestrutura não deverá conter regras de negócio dos módulos.
-8. O histórico deverá receber dados por meio dos contratos definidos pela aplicação.
-9. Os módulos funcionais não deverão acessar diretamente SQLite.
+5. A infraestrutura implementa mecanismos de acesso a recursos externos.
+6. A aplicação utiliza contratos para acessar a persistência.
+7. A infraestrutura não contém regras de negócio dos módulos.
+8. HISTORY recebe dados por meio dos contratos da aplicação.
+9. Módulos funcionais não acessam diretamente SQLite.
 10. Dependências circulares deverão ser evitadas.
 
-### Exemplo de fluxo permitido
+Fluxo permitido:
 
 ```text
 CLI
@@ -438,7 +353,7 @@ CLI
 Caso de uso
  |
  v
-Módulo HASH
+Módulo funcional
  |
  v
 Resultado estruturado
@@ -453,57 +368,35 @@ Contrato de persistência
 SQLite Repository
 ```
 
-### Exemplo de dependência não permitida
-
-```text
-Módulo FILE
-    |
-    v
-Módulo NETWORK
-    |
-    v
-Módulo HASH
-    |
-    v
-Módulo FILE
-```
-
-Esse tipo de dependência circular comprometeria a manutenção e a independência dos módulos.
-
 # 8. Fluxo de execução
 
-Uma operação funcional padrão deverá seguir o fluxo abaixo:
+Uma operação funcional em modo normal deverá seguir o fluxo:
 
 ```mermaid
 sequenceDiagram
     actor User as Usuário
-    participant CLI as CLI
+    participant CLI
     participant App as Aplicação
     participant Module as Módulo
-    participant Infra as Infraestrutura
     participant Repo as Persistência
 
     User->>CLI: Executa comando
     CLI->>App: Encaminha solicitação
     App->>App: Valida parâmetros
-    App->>App: Inicia execução
     App->>Repo: Registra RUNNING
     App->>Module: Solicita operação
-    Module->>Infra: Acessa recurso necessário
-    Infra-->>Module: Retorna informações
-    Module-->>App: Retorna resultado estruturado
-    App->>App: Determina estado funcional
+    Module-->>App: Resultado estruturado
     App->>Repo: Persiste resultados e estado final
-    Repo-->>App: Retorna situação da persistência
-    App-->>CLI: Retorna resultado e situação do histórico
+    Repo-->>App: Situação da persistência
+    App-->>CLI: Resultado funcional e histórico
     CLI-->>User: Apresenta resposta
 ```
 
-O fluxo representa o comportamento geral. Operações PASSWORD deverão aplicar tratamento específico para impedir que valores de senha sejam enviados à persistência.
+Operações PASSWORD deverão aplicar tratamento específico para impedir que valores de senha sejam enviados à persistência.
 
 ## 8.1. Separação entre operação e persistência
 
-A operação funcional e a persistência do histórico são responsabilidades distintas.
+O resultado funcional e a persistência do histórico são responsabilidades distintas.
 
 Exemplo:
 
@@ -521,11 +414,9 @@ Resposta:
 
 A falha de persistência não deverá transformar automaticamente uma operação funcional bem-sucedida em falha funcional.
 
-A CLI deverá comunicar ambas as situações, utilizando os códigos de saída definidos em `API.md`.
-
 ## 8.2. Ciclo de vida da execução
 
-As execuções persistidas deverão utilizar os seguintes estados:
+Estados persistidos:
 
 - `RUNNING`
 - `SUCCESS`
@@ -533,141 +424,111 @@ As execuções persistidas deverão utilizar os seguintes estados:
 - `FAILED`
 - `INTERRUPTED`
 
-Fluxo conceitual:
-
-```mermaid
-stateDiagram-v2
-    [*] --> RUNNING
-    RUNNING --> SUCCESS
-    RUNNING --> PARTIAL
-    RUNNING --> FAILED
-    RUNNING --> INTERRUPTED
-    SUCCESS --> [*]
-    PARTIAL --> [*]
-    FAILED --> [*]
-    INTERRUPTED --> [*]
-```
-
-O registro deverá ser iniciado quando uma operação elegível começar.
-
-Ao término, a aplicação deverá atualizar o estado e registrar os resultados disponíveis.
-
-Em caso de falha, deverá preservar as informações que puderem ser registradas com segurança.
-
 O estado `INTERRUPTED` será utilizado quando uma execução permanecer em `RUNNING` após o encerramento inesperado da instância responsável.
 
 # 9. Persistência e banco de dados
 
-## 9.1. Tecnologia
-
 **Banco de dados:** SQLite.
 
-O SQLite foi escolhido por oferecer persistência local sem exigir servidor de banco de dados.
-
-### Responsabilidades
-
-- Armazenar execuções.
-- Armazenar resultados.
-- Permitir consultas ao histórico.
-- Manter relacionamentos entre execuções e resultados.
-- Preservar integridade referencial.
-
-## 9.2. Estrutura persistente
-
-O MVP utilizará inicialmente duas entidades:
+O MVP utilizará inicialmente duas entidades persistentes:
 
 - `AnalysisRun`
 - `AnalysisResult`
 
 O relacionamento será de um para muitos (1:N).
 
-Cada execução deverá possuir um `instance_id` que identifique a instância responsável por sua criação.
+Diretrizes:
 
-A estrutura detalhada está documentada em `MODELO-DE-DADOS.md`.
-
-## 9.3. Diretrizes de persistência
-
-- Utilizar consultas parametrizadas.
-- Garantir integridade referencial.
-- Controlar transações.
-- Evitar persistência de informações sensíveis.
-- Não armazenar conteúdo integral dos arquivos.
+- Consultas parametrizadas.
+- Integridade referencial.
+- Controle de transações.
+- Minimização de dados.
+- Não armazenar conteúdo integral de arquivos.
 - Não persistir senhas.
-- Evitar registros duplicados por falhas de fluxo.
-- Utilizar datas em UTC.
-- Centralizar o acesso ao banco na infraestrutura.
+- Datas em UTC.
+- Acesso centralizado na infraestrutura.
 
-## 9.4. Histórico e operações recursivas
+A estrutura detalhada está em `MODELO-DE-DADOS.md`.
 
-A consulta e a exportação do histórico não deverão gerar registros de execução recursivos.
+## 9.1. Histórico e operações recursivas
 
-A execução do módulo HISTORY deverá ser tratada de maneira específica para evitar que consultar o histórico altere continuamente o próprio histórico.
+Consultas e exportações do HISTORY não deverão gerar registros de execução recursivos.
 
 # 10. Gerenciamento de instância e recuperação
 
 ## 10.1. Instância única ativa
 
-O MVP deverá permitir somente uma instância ativa do Odyssey AV por vez.
+O MVP permitirá somente uma instância ativa do Odyssey AV por vez.
 
-O controle deverá utilizar um mecanismo de bloqueio exclusivo compatível com Windows e Linux.
+O controle utilizará mecanismo de bloqueio exclusivo compatível com Windows e Linux.
 
-O bloqueio deverá ser adquirido antes de iniciar operações funcionais.
-
-Se outra instância já estiver ativa, a nova inicialização deverá ser impedida ou encerrada com mensagem clara.
+O bloqueio deverá ser adquirido antes das operações funcionais. Se outra instância estiver ativa, a nova inicialização deverá ser impedida com mensagem clara.
 
 ## 10.2. Identificação da instância
 
 Cada inicialização válida deverá gerar um UUID para `instance_id`.
 
-As execuções registradas durante aquela inicialização deverão utilizar o mesmo identificador.
-
-O identificador não deverá ser reutilizado em inicializações posteriores.
+As execuções daquela inicialização utilizarão o mesmo identificador. O identificador não deverá ser reutilizado.
 
 ## 10.3. Recuperação de execuções
 
-Após obter o bloqueio exclusivo, a aplicação deverá consultar execuções anteriores que permaneceram no estado `RUNNING`.
+Após obter o bloqueio exclusivo, a aplicação deverá consultar execuções anteriores que permaneceram em `RUNNING`.
 
 As execuções pertencentes a instâncias anteriores deverão ser atualizadas para `INTERRUPTED`.
 
-A recuperação não deverá depender exclusivamente do PID, pois o sistema operacional pode reutilizar identificadores de processos.
+A recuperação não deverá depender exclusivamente do PID, devido à possibilidade de reutilização pelo sistema operacional.
 
-## 10.4. Liberação do bloqueio
+## 10.4. Falha durante a recuperação do histórico
 
-O bloqueio deverá ser liberado no encerramento normal da aplicação.
+Se o SQLite estiver indisponível ou ocorrer uma falha que impeça a conclusão da recuperação, a aplicação deverá entrar em modo degradado.
 
-Em encerramentos inesperados, o mecanismo do sistema operacional deverá permitir a liberação do bloqueio quando o processo responsável deixar de existir.
+O modo degradado deverá respeitar as seguintes regras:
 
-O bloqueio não deverá ser confundido com um registro persistente de estado da aplicação.
+1. A aplicação deverá manter o bloqueio exclusivo durante a sessão.
+2. A falha de recuperação deverá ser comunicada ao usuário.
+3. As ferramentas funcionais FILE, HASH, NETWORK, PASSWORD, URL e PROCESS poderão continuar disponíveis.
+4. Nenhuma nova execução deverá ser apresentada como persistida.
+5. A aplicação não deverá tentar realizar gravações parciais no histórico como se a recuperação tivesse sido concluída.
+6. O módulo HISTORY deverá ficar indisponível para consultas e exportações.
+7. A CLI deverá informar que os resultados da sessão não serão armazenados no histórico.
+8. A falha de persistência deverá permanecer separada do resultado funcional das operações.
+9. A aplicação não deverá ignorar silenciosamente execuções antigas em `RUNNING`.
+10. A recuperação será tentada novamente em uma inicialização posterior.
+
+O modo degradado não deverá ser interpretado como recuperação bem-sucedida. Ele representa uma condição operacional limitada.
+
+A decisão de permitir operações funcionais sem persistência não autoriza a criação de um mecanismo alternativo de armazenamento no MVP.
+
+## 10.5. Liberação do bloqueio
+
+O bloqueio deverá ser liberado no encerramento normal.
+
+Em encerramentos inesperados, o mecanismo do sistema operacional deverá permitir a liberação quando o processo responsável deixar de existir.
 
 # 11. Segurança arquitetural
 
-A segurança será tratada como uma preocupação transversal.
-
-Os mecanismos de proteção deverão ser aplicados nas camadas responsáveis por cada operação.
-
-### Diretrizes
+Diretrizes:
 
 1. Não executar arquivos analisados.
 2. Não modificar arquivos durante a análise.
 3. Validar entradas antes do processamento.
-4. Não utilizar shell para executar comandos construídos a partir de entradas do usuário.
+4. Não utilizar shell com comandos construídos a partir de entradas do usuário.
 5. Não persistir senhas.
-6. Não realizar requisições automáticas durante a análise de URLs.
-7. Controlar e identificar operações externas de rede.
-8. Respeitar as permissões do sistema operacional.
+6. Não realizar requisições automáticas durante análise de URLs.
+7. Controlar operações externas de rede.
+8. Respeitar permissões do sistema operacional.
 9. Utilizar consultas parametrizadas no SQLite.
-10. Evitar exposição de informações sensíveis em logs e relatórios.
+10. Evitar exposição de informações sensíveis.
 11. Não solicitar elevação de privilégios automaticamente.
-12. Não seguir links simbólicos automaticamente durante a análise de arquivos.
+12. Não seguir links simbólicos automaticamente durante análise de arquivos.
 13. Separar resultados funcionais de falhas de persistência.
+14. Informar quando a aplicação estiver operando em modo degradado.
 
 Os controles detalhados serão especificados em `SEGURANCA.md`.
 
 # 12. Tratamento de erros
 
-O tratamento de erros deverá ser consistente entre os módulos.
-
-### Categorias de falhas
+Categorias:
 
 | Categoria | Exemplo |
 |---|---|
@@ -676,24 +537,24 @@ O tratamento de erros deverá ser consistente entre os módulos.
 | Recurso indisponível | Serviço DNS ou rede inacessível |
 | Falha de processamento | Erro durante análise |
 | Falha de persistência | Erro ao registrar histórico |
+| Falha de recuperação | Erro ao atualizar execuções antigas |
 | Recurso incompatível | Operação não suportada na plataforma |
 | Execução interrompida | Processo encerrado antes da conclusão |
 
-### Diretrizes
+Diretrizes:
 
 - Exibir mensagens compreensíveis.
-- Preservar informações técnicas necessárias para diagnóstico.
+- Preservar informações técnicas necessárias.
 - Não revelar segredos.
-- Diferenciar falhas de execução de resultados negativos de análise.
 - Diferenciar falhas funcionais de falhas de persistência.
-- Evitar que uma falha em um módulo comprometa desnecessariamente os demais.
-- Registrar somente informações sanitizadas.
+- Comunicar limitações de acesso.
+- Evitar que falhas em um módulo comprometam desnecessariamente os demais.
 
 # 13. Observabilidade
 
-A observabilidade do MVP será simples e local.
+A observabilidade do MVP será local e simples.
 
-### Recursos previstos
+Recursos previstos:
 
 - Logs operacionais.
 - Identificador da execução.
@@ -701,40 +562,23 @@ A observabilidade do MVP será simples e local.
 - Estado da execução.
 - Duração das operações.
 - Mensagens de erro sanitizadas.
-- Histórico de resultados.
+- Estado operacional da aplicação.
 
-Não será necessária uma plataforma externa de monitoramento.
+Os logs terão finalidade de diagnóstico técnico. O histórico armazenará os resultados das operações quando disponível.
 
-Os logs terão finalidade de diagnóstico técnico, enquanto o histórico armazenará os resultados das operações disponíveis para consulta.
-
-Os logs não substituirão o histórico e não deverão conter senhas ou argumentos secretos.
+Logs não substituirão o histórico e não deverão conter senhas ou argumentos secretos.
 
 # 14. Configuração
 
-A aplicação deverá permitir configurações locais opcionais.
+A aplicação poderá utilizar arquivo TOML opcional.
 
-A proposta inicial é utilizar um arquivo TOML.
-
-### Exemplos de configurações
-
-- Preferências gerais de execução.
-- Configurações de saída.
-- Localização dos dados persistidos.
-- Parâmetros operacionais dos módulos, quando aplicável.
-
-### Precedência
+A precedência será:
 
 1. Padrões internos.
-2. Valores definidos no arquivo TOML.
+2. Valores do TOML.
 3. Argumentos explicitamente fornecidos na CLI.
 
-### Diretrizes
-
-- Valores padrão deverão permitir a execução básica.
-- A ausência do arquivo de configuração deverá ser permitida.
-- Configurações inválidas deverão produzir mensagens claras.
-- Dados sensíveis não deverão ser armazenados em texto simples.
-- A aplicação deverá funcionar sem configuração avançada obrigatória.
+A ausência do arquivo será permitida. Configurações inválidas deverão produzir mensagens claras.
 
 # 15. Tecnologias
 
@@ -749,62 +593,48 @@ A proposta inicial é utilizar um arquivo TOML.
 | Senhas | secrets | Geração segura |
 | Testes | pytest | Testes automatizados |
 | Configuração | TOML | Configurações locais |
-| Controle de versão | Git | Versionamento do código |
-| Repositório | GitHub | Hospedagem do projeto |
+| Controle de versão | Git | Versionamento |
+| Repositório | GitHub | Hospedagem |
 
-As bibliotecas padrão do Python deverão ser priorizadas quando atenderem às necessidades do projeto.
-
-A inclusão de dependências adicionais deverá ser justificada pela necessidade funcional ou técnica.
+Bibliotecas padrão deverão ser priorizadas quando atenderem às necessidades do projeto.
 
 # 16. Estratégia de testes
 
-A arquitetura deverá permitir testes isolados dos módulos e testes integrados dos fluxos de execução.
+A arquitetura deverá permitir:
 
-### Tipos de testes
-
-| Tipo | Objetivo |
-|---|---|
-| Unitários | Validar funções e regras isoladamente |
-| Integração | Validar comunicação entre camadas |
-| Persistência | Verificar operações SQLite |
-| Segurança | Verificar proteção de entradas e dados sensíveis |
-| Plataforma | Validar Windows e Linux |
-| Recuperação | Verificar identificação e atualização de execuções interrompidas |
-| Concorrência | Verificar bloqueio de instância única |
-| Regressão | Evitar que alterações quebrem funcionalidades existentes |
+- Testes unitários.
+- Testes de integração.
+- Testes de persistência.
+- Testes de segurança.
+- Testes de plataforma.
+- Testes de recuperação.
+- Testes de concorrência.
+- Testes de regressão.
+- Testes do modo degradado.
 
 A especificação detalhada será mantida em `TESTES.md`.
 
 # 17. Implantação e execução
 
-O Odyssey AV será distribuído inicialmente como uma aplicação local executada por linha de comando.
+O Odyssey AV será distribuído inicialmente como aplicação local executada por CLI.
 
-### Características
+Características:
 
 - Execução local.
 - Sem servidor obrigatório.
-- Sem banco de dados remoto obrigatório.
-- Sem dependência de serviços em nuvem para as operações locais.
+- Sem banco remoto obrigatório.
+- Sem dependência obrigatória de serviços em nuvem.
 - Compatibilidade com Windows e Linux suportados.
 
-A forma definitiva de empacotamento e distribuição deverá ser definida durante a implementação.
+A forma definitiva de empacotamento será definida durante a implementação.
 
 # 18. Estratégia de evolução
 
-A arquitetura deverá permitir que novos recursos sejam incorporados sem comprometer os módulos existentes.
+Novos recursos deverão respeitar os contratos existentes, preservar a separação de responsabilidades e evitar dependências circulares.
 
-Para isso:
+A evolução deverá preservar a simplicidade do MVP e não antecipar funcionalidades ainda não aprovadas.
 
-- Novos módulos deverão respeitar os contratos de execução.
-- A CLI deverá permanecer separada da lógica funcional.
-- A persistência deverá ser acessada por uma camada própria.
-- Serviços transversais deverão evitar duplicação de lógica.
-- Dependências circulares deverão ser evitadas.
-- Alterações arquiteturais relevantes deverão ser documentadas.
-
-A evolução deverá preservar a simplicidade do MVP e não antecipar funcionalidades que ainda não fazem parte do escopo aprovado.
-
-A possibilidade de evolução futura para recursos antimalware não deverá justificar a implementação antecipada de mecanismos que não pertencem ao MVP.
+A possibilidade de evolução futura para recursos antimalware não justifica implementar mecanismos fora do escopo atual.
 
 # 19. Decisões arquiteturais
 
@@ -819,9 +649,10 @@ A possibilidade de evolução futura para recursos antimalware não deverá just
 | ARC-007 | Contratos de execução | Padronização dos resultados |
 | ARC-008 | Persistência centralizada | Integridade e controle do histórico |
 | ARC-009 | Instância única ativa | Evitar concorrência entre instâncias |
-| ARC-010 | Identificador UUID por instância | Associar execuções à inicialização responsável |
+| ARC-010 | UUID por instância | Associar execuções à inicialização |
 | ARC-011 | Recuperação de execuções | Evitar registros indefinidamente em RUNNING |
 | ARC-012 | Separação entre operação e persistência | Preservar o resultado funcional diante de falha no histórico |
+| ARC-013 | Modo degradado após falha de recuperação | Preservar disponibilidade sem declarar o histórico consistente |
 
 Esses identificadores representam decisões documentadas, não arquivos ADR independentes.
 
@@ -839,10 +670,15 @@ Esses identificadores representam decisões documentadas, não arquivos ADR inde
 | Persistência | Definida conceitualmente |
 | Instância única | Definida |
 | Recuperação de execuções | Definida |
+| Modo degradado | Definido |
 | Segurança arquitetural | Diretrizes definidas |
 | Tratamento de erros | Estruturado |
 | Observabilidade | Estruturada |
 | Configuração | Estruturada |
 | Tecnologias | Definidas preliminarmente |
 | Estratégia de testes | Definida conceitualmente |
-| Revisão cruzada | Pendente |
+| Revisão cruzada | Em andamento |
+
+---
+
+**Observação:** este documento especifica a arquitetura do MVP. A implementação física do banco, do bloqueio exclusivo, da recuperação e do modo degradado ocorrerá somente após a consolidação documental e autorização explícita para iniciar o desenvolvimento.

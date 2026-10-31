@@ -1,9 +1,9 @@
 # REGRAS-DE-NEGOCIO.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Escopo:** MVP  
-**Status:** Consolidado para revisão
+**Status:** Consolidado para revisão cruzada
 
 ---
 
@@ -33,12 +33,13 @@ No MVP, as ferramentas terão caráter de análise, diagnóstico e consulta. Nã
 
 **Aplicação:** todos os módulos.
 
-**Consequência:**
+**Consequências:**
 
 - As operações disponíveis não deverão modificar os recursos analisados.
 - O sistema não deverá executar ações corretivas automaticamente.
 - A análise de um recurso não deverá provocar sua alteração ou exclusão.
 - O monitoramento de processos deverá permanecer exclusivamente informativo.
+- O sistema não deverá encerrar, suspender ou modificar processos.
 
 ## RN-002 — Integridade do cálculo de hash
 
@@ -46,12 +47,14 @@ O cálculo de hash deverá ser realizado sobre os bytes reais do conteúdo do ar
 
 **Aplicação:** módulo HASH.
 
-**Consequência:**
+**Consequências:**
 
 - Arquivos com conteúdos idênticos deverão produzir o mesmo hash utilizando o mesmo algoritmo.
 - Alterações no conteúdo deverão refletir-se no resultado do cálculo.
 - A extensão ou o nome do arquivo não deverão interferir no cálculo.
 - O algoritmo previsto para o MVP será SHA-256.
+- A comparação deverá utilizar uma referência fornecida pelo usuário.
+- O MVP não manterá uma base própria de hashes.
 
 ## RN-003 — Indicadores suspeitos não representam confirmação de malware
 
@@ -59,12 +62,13 @@ A identificação de características suspeitas não deverá ser apresentada com
 
 **Aplicação:** módulos FILE, HASH, URL e PROCESS.
 
-**Consequência:**
+**Consequências:**
 
 - Os resultados deverão distinguir indicadores, divergências e suspeitas de uma detecção efetivamente confirmada.
-- O Odyssey AV deverá informar limitações de análise.
+- O Odyssey AV deverá informar as limitações de análise.
 - O sistema deverá evitar classificações conclusivas sem evidências suficientes.
 - A identificação de uma assinatura ou divergência de extensão não deverá ser apresentada como comprovação de segurança ou infecção.
+- A correspondência de hashes não deverá ser apresentada como prova absoluta de segurança.
 
 ## RN-004 — Classificação de comparação de hashes
 
@@ -78,7 +82,7 @@ A comparação de hashes deverá apresentar resultados distintos para cada situa
 
 **Aplicação:** módulo HASH.
 
-**Consequência:**
+**Consequências:**
 
 - A ausência de uma referência não poderá ser interpretada como divergência.
 - A correspondência de hashes não deverá ser apresentada como prova absoluta de segurança.
@@ -93,7 +97,7 @@ Senhas geradas ou avaliadas pelo Odyssey AV não deverão ser armazenadas no his
 
 **Aplicação:** módulo PASSWORD.
 
-**Consequência:**
+**Consequências:**
 
 - O resultado da avaliação poderá apresentar informações sobre características da senha, sem revelar seu conteúdo.
 - Senhas geradas não deverão ser persistidas.
@@ -112,7 +116,7 @@ A análise de URLs deverá ocorrer localmente, considerando sua estrutura e cara
 
 **Aplicação:** módulo URL.
 
-**Consequência:**
+**Consequências:**
 
 - O módulo não deverá realizar requisições HTTP automaticamente.
 - O módulo não deverá realizar consultas DNS automaticamente.
@@ -126,7 +130,7 @@ Toda operação que envolva comunicação com recursos externos deverá ser iden
 
 **Aplicação:** módulo NETWORK e demais operações que eventualmente utilizem recursos externos.
 
-**Consequência:**
+**Consequências:**
 
 - O diagnóstico de rede poderá executar verificações externas quando o usuário invocar explicitamente o comando correspondente.
 - Consultas DNS e conectividade deverão ser identificadas como operações de rede.
@@ -135,15 +139,13 @@ Toda operação que envolva comunicação com recursos externos deverá ser iden
 - A análise local de arquivos, hashes, senhas e URLs não deverá iniciar operações externas inesperadas.
 - Falhas de comunicação deverão ser apresentadas como limitações ou falhas da operação de rede.
 
-# 4. Regras dos módulos
-
 ## RN-008 — Monitoramento de processos somente para consulta
 
 O módulo de processos deverá limitar-se à listagem e consulta de informações dos processos acessíveis ao usuário.
 
 **Aplicação:** módulo PROCESS.
 
-**Consequência:** o Odyssey AV não poderá:
+**Consequências:** o Odyssey AV não poderá:
 
 - Encerrar processos.
 - Suspender ou retomar processos.
@@ -155,15 +157,13 @@ O módulo terá finalidade exclusivamente informativa no MVP.
 
 A impossibilidade de consultar determinado processo por falta de permissão ou indisponibilidade deverá ser comunicada ao usuário.
 
-# 5. Regras de histórico e relatórios
-
 ## RN-009 — Registro e recuperação das execuções
 
-As execuções funcionais dos módulos deverão ser registradas no histórico, incluindo operações concluídas com sucesso, parcialmente concluídas ou malsucedidas.
+As execuções funcionais dos módulos FILE, HASH, NETWORK, PASSWORD, URL e PROCESS deverão ser registradas no histórico, incluindo operações concluídas com sucesso, parcialmente concluídas ou malsucedidas.
 
 **Aplicação:** persistência transversal e módulo HISTORY.
 
-**Consequência:**
+**Consequências:**
 
 - Execuções bem-sucedidas deverão ser registradas.
 - Execuções parciais deverão preservar os resultados efetivamente obtidos.
@@ -171,6 +171,7 @@ As execuções funcionais dos módulos deverão ser registradas no histórico, i
 - O histórico deverá permitir identificar o módulo, o comando normalizado e o estado da execução.
 - Execuções PASSWORD deverão ser registradas sem persistir o conteúdo das senhas.
 - Consultas e exportações do módulo HISTORY não deverão gerar novos registros `AnalysisRun`.
+- O registro da execução deverá manter associação com o identificador da instância responsável.
 
 ### Estados de execução
 
@@ -194,13 +195,17 @@ O identificador lógico da instância deverá ser utilizado para associar as exe
 
 O estado `INTERRUPTED` não deverá ser interpretado automaticamente como falha funcional.
 
+A recuperação deverá ocorrer de maneira controlada após a aquisição do bloqueio exclusivo e antes da disponibilização de novas operações funcionais.
+
+A política de inicialização diante de falha na recuperação do histórico deverá ser definida no contrato de execução e na arquitetura, sem presumir que uma recuperação malsucedida equivale a uma recuperação concluída.
+
 ## RN-010 — Minimização e proteção de dados persistidos
 
 O Odyssey AV deverá armazenar somente os dados necessários para manter o histórico e permitir a consulta dos resultados.
 
 **Aplicação:** todos os módulos.
 
-**Consequência:**
+**Consequências:**
 
 - Não armazenar o conteúdo integral dos arquivos analisados.
 - Não armazenar senhas.
@@ -213,32 +218,13 @@ O Odyssey AV deverá armazenar somente os dados necessários para manter o hist�
 
 Os registros deverão utilizar comandos normalizados, evitando armazenar argumentos potencialmente sensíveis.
 
-## RN-013 — Separação entre resultado funcional e persistência
-
-O resultado funcional de uma operação deverá ser tratado separadamente da situação de persistência do histórico.
-
-**Aplicação:** aplicação, infraestrutura de persistência e CLI.
-
-**Consequência:**
-
-- Uma operação poderá ser concluída com sucesso mesmo quando o SQLite estiver indisponível para registrar seu resultado.
-- A falha de persistência não deverá transformar automaticamente uma operação funcional bem-sucedida em uma falha funcional.
-- A aplicação deverá comunicar separadamente o resultado da operação e a situação do histórico.
-- O sistema não deverá afirmar que o histórico foi salvo quando a persistência não tiver sido confirmada.
-- A CLI deverá utilizar o código de saída previsto para operação concluída com falha de persistência.
-- Informações não persistidas não poderão ser apresentadas como se estivessem disponíveis no histórico.
-
-A separação deverá ser preservada tanto na saída textual quanto na saída estruturada em JSON.
-
-# 6. Regras de exportação
-
 ## RN-011 — Exportação limitada aos dados disponíveis
 
 Os relatórios exportados deverão conter somente informações efetivamente registradas e selecionadas para exportação.
 
 **Aplicação:** módulo HISTORY.
 
-**Consequência:**
+**Consequências:**
 
 - A exportação deverá respeitar os dados disponíveis no histórico.
 - Informações inexistentes não poderão ser inventadas ou inferidas.
@@ -249,15 +235,13 @@ Os relatórios exportados deverão conter somente informações efetivamente reg
 - A exportação deverá respeitar os filtros solicitados pelo usuário.
 - Falhas na exportação deverão ser comunicadas sem apresentar arquivos incompletos como relatórios concluídos.
 
-# 7. Regras de confiabilidade
-
 ## RN-012 — Transparência sobre limitações de acesso
 
 O Odyssey AV deverá informar quando não conseguir acessar, consultar ou analisar determinado recurso por limitações de permissão, plataforma ou disponibilidade.
 
 **Aplicação:** todos os módulos.
 
-**Consequência:**
+**Consequências:**
 
 - Falta de permissão não deverá ser interpretada como ausência de risco.
 - Informações indisponíveis deverão ser identificadas como não verificadas.
@@ -266,9 +250,25 @@ O Odyssey AV deverá informar quando não conseguir acessar, consultar ou analis
 - Processos que encerrarem durante a consulta deverão ser tratados como dados indisponíveis.
 - Falhas de acesso a arquivos deverão ser diferenciadas de resultados negativos de análise.
 
-# 8. Matriz de rastreabilidade
+## RN-013 — Separação entre resultado funcional e persistência
 
-| Regra | Módulo relacionado | Objetivo principal |
+O resultado funcional de uma operação deverá ser tratado separadamente da situação de persistência do histórico.
+
+**Aplicação:** camada de aplicação, infraestrutura de persistência e CLI.
+
+**Consequências:**
+
+- Uma operação poderá ser concluída com sucesso mesmo quando o SQLite estiver indisponível para registrar seu resultado.
+- A falha de persistência não deverá transformar automaticamente uma operação funcional bem-sucedida em uma falha funcional.
+- A aplicação deverá comunicar separadamente o resultado da operação e a situação do histórico.
+- O sistema não deverá afirmar que o histórico foi salvo quando a persistência não tiver sido confirmada.
+- A CLI deverá utilizar o código de saída previsto para operação concluída com falha de persistência.
+- Informações não persistidas não poderão ser apresentadas como se estivessem disponíveis no histórico.
+- A separação deverá ser preservada tanto na saída textual quanto na saída estruturada em JSON.
+
+# 4. Matriz de rastreabilidade
+
+| Regra | Módulo ou camada relacionada | Objetivo principal |
 |---|---|---|
 | RN-001 | Todos | Evitar ações destrutivas |
 | RN-002 | HASH | Garantir cálculo correto |
@@ -278,22 +278,26 @@ O Odyssey AV deverá informar quando não conseguir acessar, consultar ou analis
 | RN-006 | URL | Evitar acessos externos automáticos |
 | RN-007 | NETWORK | Controlar operações externas |
 | RN-008 | PROCESS | Restringir operações a consultas |
-| RN-009 | Todos, HISTORY | Preservar e recuperar histórico |
+| RN-009 | FILE, HASH, NETWORK, PASSWORD, URL, PROCESS e HISTORY | Registrar e recuperar execuções |
 | RN-010 | Todos | Minimizar dados persistidos |
 | RN-011 | HISTORY | Controlar exportações |
 | RN-012 | Todos | Comunicar limitações |
-| RN-013 | Aplicação e infraestrutura | Separar operação e persistência |
+| RN-013 | Aplicação, persistência e CLI | Separar operação e persistência |
 
-# 9. Observações para implementação
+# 5. Observações para implementação
 
-As regras acima definem o comportamento esperado do sistema. Os mecanismos técnicos para garanti-las serão detalhados nos documentos de arquitetura, segurança e testes.
+As regras acima definem o comportamento esperado do sistema. Os mecanismos técnicos para garanti-las serão detalhados nos documentos de arquitetura, segurança, modelo de dados, interface CLI e testes.
 
 | Regra | Mecanismo técnico relacionado |
 |---|---|
+| RN-001 | Operações de leitura e consulta, sem ações destrutivas |
 | RN-002 | `hashlib` e leitura binária |
-| RN-005 | Exclusão de senhas dos registros e relatórios |
+| RN-003 | Classificação de indicadores e comunicação de limitações |
+| RN-004 | Estados `MATCH`, `MISMATCH` e `NO_REFERENCE` |
+| RN-005 | Exclusão de senhas dos registros, logs e relatórios |
 | RN-006 | Separação entre parsing local e operações de rede |
 | RN-007 | Controle explícito das operações externas |
+| RN-008 | Consulta de processos em modo somente leitura |
 | RN-009 | Identificação de instância, bloqueio exclusivo e recuperação de execuções |
 | RN-010 | Sanitização de dados e logs |
 | RN-011 | Seleção e filtragem dos campos exportados |
@@ -302,7 +306,7 @@ As regras acima definem o comportamento esperado do sistema. Os mecanismos técn
 
 Esses mecanismos não substituem as regras de negócio; são formas de implementá-las.
 
-# 10. Estado do documento
+# 6. Estado do documento
 
 | Critério | Situação |
 |---|---|
@@ -315,7 +319,9 @@ Esses mecanismos não substituem as regras de negócio; são formas de implement
 | Proteção de senhas | Definida |
 | Separação entre operação e histórico | Definida |
 | Exportação | Definida |
-| Rastreabilidade | Estruturada |
-| Revisão cruzada | Pendente |
+| Rastreabilidade | Consolidada estruturalmente |
+| Revisão cruzada | Em andamento |
 
 **Total de regras:** 13.
+
+**Observação:** este documento consolida as regras de negócio do MVP. As decisões técnicas de implementação permanecem subordinadas aos documentos de arquitetura, segurança, modelo de dados e contrato da CLI.
