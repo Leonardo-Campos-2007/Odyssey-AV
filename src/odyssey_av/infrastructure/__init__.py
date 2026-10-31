@@ -1,0 +1,1 @@
+"""Implementações técnicas dependentes de recursos externos ou do sistema operacional."""

@@ -1,0 +1,1 @@
+"""Isolamento das diferenças entre Windows e Linux."""
