@@ -36,7 +36,7 @@ def calculate_sha256(path: Path, reference: str | None = None) -> HashResult:
     O arquivo é aberto somente para leitura e processado em blocos. Diretórios,
     dispositivos, sockets, pipes e links simbólicos são recusados.
     """
-    normalized = _normalize_reference(reference)
+    normalized = normalize_reference(reference)
     fd = _open_for_reading(path)
 
     digest = hashlib.sha256()
@@ -76,7 +76,7 @@ def _open_for_reading(path: Path) -> int:
         ) from exc
 
 
-def _normalize_reference(reference: str | None) -> str | None:
+def normalize_reference(reference: str | None) -> str | None:
     if reference is None:
         return None
     value = reference.strip()
