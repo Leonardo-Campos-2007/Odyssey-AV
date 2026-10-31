@@ -1,4 +1,4 @@
-"""Caso de uso: calcular SHA-256 e, opcionalmente, comparar com uma referência."""
+"""Casos de uso do HASH: calcular SHA-256 e comparar com uma referência."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from odyssey_av.application.services.execution_service import (
 from odyssey_av.application.services.recovery_service import Session
 from odyssey_av.domain.enums import ComparisonStatus, Module, ResultStatus
 from odyssey_av.modules.hash.calculator import calculate_sha256, normalize_reference
+from odyssey_av.shared.errors.handlers import InvalidInputError
 
 
 @dataclass(frozen=True)
@@ -24,12 +25,23 @@ class HashCalculation:
 
 
 def calculate_hash(session: Session, path: Path, reference: str | None = None) -> HashCalculation:
-    # Entrada inválida é rejeitada antes do registro (código 2, sem AnalysisRun).
+    """Calcula o SHA-256. Com referência, compara; sem ela, o resultado é NO_REFERENCE."""
+    return _run(session, path, normalize_reference(reference), verb="calculate")
+
+
+def compare_hash(session: Session, path: Path, reference: str) -> HashCalculation:
+    """Compara o SHA-256 do arquivo com uma referência obrigatória."""
     normalized = normalize_reference(reference)
-    command = f"hash calculate {path.name}"
+    if normalized is None:
+        raise InvalidInputError("Informe a referência SHA-256 com --reference.")
+    return _run(session, path, normalized, verb="compare")
+
+
+def _run(session: Session, path: Path, reference: str | None, verb: str) -> HashCalculation:
+    command = f"hash {verb} {path.name}"
 
     def operation() -> OperationOutput:
-        result = calculate_sha256(path, normalized)
+        result = calculate_sha256(path, reference)
         status = (
             ResultStatus.WARNING
             if result.comparison is ComparisonStatus.MISMATCH

@@ -433,6 +433,11 @@ A saída deverá preservar as informações sobre ambas as situações quando ho
 
 Os códigos acima constituem o contrato definido para o MVP e deverão ser verificados nos testes da CLI.
 
+Código	Significado
+1	Falha na operação funcional. Também retornado por hash compare quando o arquivo não confere com a referência.
+
+Nota (D-09): hash calculate não usa o código 1 para divergência, pois calcular o hash é a operação; a divergência aparece na saída e no JSON. hash compare tem como função verificar, então a divergência retorna 1, com precedência sobre a falha de persistência.
+
 ## 7. Tratamento de erros
 
 A CLI deverá apresentar mensagens que:

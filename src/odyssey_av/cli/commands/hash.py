@@ -1,4 +1,4 @@
-"""Comando odyssey hash: cálculo e comparação de SHA-256."""
+"""Comandos odyssey hash: calculate e compare."""
 
 from __future__ import annotations
 
@@ -12,9 +12,14 @@ from odyssey_av.application.services.execution_service import (
     PersistenceState,
     exit_code_for,
 )
-from odyssey_av.application.use_cases.calculate_hash import HashCalculation, calculate_hash
+from odyssey_av.application.use_cases.calculate_hash import (
+    HashCalculation,
+    calculate_hash,
+    compare_hash,
+)
 from odyssey_av.cli.context import AppContext
-from odyssey_av.domain.enums import ExecutionStatus
+from odyssey_av.domain.enums import ComparisonStatus, ExecutionStatus
+from odyssey_av.shared.errors.handlers import ExitCode
 
 hash_app = typer.Typer(help="Cálculo e comparação de SHA-256.", add_completion=False)
 
@@ -26,22 +31,48 @@ def calculate(
     reference: str | None = typer.Option(
         None,
         "--reference",
-        help="SHA-256 esperado, para comparação.",
+        help="SHA-256 esperado. Opcional; sem ele, o resultado é NO_REFERENCE.",
     ),
 ) -> None:
-    """Calcula o SHA-256 do arquivo e, se informado, compara com a referência."""
+    """Calcula o SHA-256 do arquivo. Divergência informada não altera o código de saída."""
     app_ctx: AppContext = ctx.obj
     calculation = calculate_hash(app_ctx.session, path, reference)
+    _emit(app_ctx, calculation, exit_code_for(calculation.outcome))
 
+
+@hash_app.command("compare")
+def compare(
+    ctx: typer.Context,
+    path: Path = typer.Argument(..., help="Caminho do arquivo a verificar."),
+    reference: str = typer.Option(
+        ...,
+        "--reference",
+        help="SHA-256 esperado. Obrigatório.",
+    ),
+) -> None:
+    """Verifica se o arquivo confere com a referência. Divergência retorna código 1."""
+    app_ctx: AppContext = ctx.obj
+    calculation = compare_hash(app_ctx.session, path, reference)
+    _emit(app_ctx, calculation, _compare_exit_code(calculation))
+
+
+def _emit(app_ctx: AppContext, calculation: HashCalculation, code: ExitCode) -> None:
     if app_ctx.config.output_format == "json":
         typer.echo(json.dumps(_as_dict(calculation), ensure_ascii=False, indent=2))
     else:
         for line in _as_lines(calculation):
             typer.echo(line)
 
-    code = exit_code_for(calculation.outcome)
-    if code != 0:
+    if code != ExitCode.SUCCESS:
         raise typer.Exit(code=int(code))
+
+
+def _compare_exit_code(calculation: HashCalculation) -> ExitCode:
+    """Divergência é um resultado negativo da verificação e tem precedência sobre a persistência."""
+    functional_ok = calculation.outcome.functional_status is not ExecutionStatus.FAILED
+    if functional_ok and calculation.comparison is ComparisonStatus.MISMATCH:
+        return ExitCode.FUNCTIONAL_FAILURE
+    return exit_code_for(calculation.outcome)
 
 
 def _as_lines(calculation: HashCalculation) -> list[str]:
@@ -55,6 +86,8 @@ def _as_lines(calculation: HashCalculation) -> list[str]:
             f"Tamanho: {calculation.size} bytes",
             f"Comparação: {calculation.comparison.value}",
         ]
+        if calculation.comparison is ComparisonStatus.MISMATCH:
+            lines.append("Resultado: o arquivo não confere com a referência.")
     lines.append(f"Histórico: {_history_label(outcome.persistence, outcome.run_id)}")
     return lines
 
