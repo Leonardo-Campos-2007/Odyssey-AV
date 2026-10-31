@@ -1,9 +1,9 @@
 # REQUISITOS.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Escopo:** MVP  
-**Status:** Consolidado para revisão
+**Status:** Consolidado para revisão cruzada
 
 ---
 
@@ -16,8 +16,6 @@ Os requisitos estabelecem as funcionalidades que o sistema deverá oferecer e as
 O escopo está limitado às sete ferramentas definidas para o MVP.
 
 # 2. Escopo funcional
-
-O MVP será composto pelos seguintes módulos:
 
 | Código | Módulo | Descrição |
 |---|---|---|
@@ -241,17 +239,27 @@ A exportação deverá permitir limitar os registros e campos selecionados, evit
 
 O sistema deverá identificar execuções que permaneceram no estado `RUNNING` após o encerramento inesperado de uma instância anterior.
 
-Após obter o mecanismo de bloqueio exclusivo da aplicação, deverá atualizar essas execuções para `INTERRUPTED`.
+A recuperação deverá:
 
-A recuperação deverá utilizar o identificador da instância da aplicação e não depender exclusivamente do PID do sistema operacional.
+- Ocorrer somente após a obtenção do bloqueio exclusivo da aplicação.
+- Identificar registros pertencentes a instâncias anteriores.
+- Atualizar para `INTERRUPTED` as execuções que permaneceram em `RUNNING`.
+- Utilizar o identificador da instância da aplicação, sem depender exclusivamente do PID do sistema operacional.
+- Ser realizada de maneira transacional.
 
-### RF-031 — Identificação da instância da aplicação
+A aplicação não deverá considerar a recuperação concluída antes da confirmação da transação.
+
+Caso a transação de recuperação falhe, os registros deverão permanecer no estado efetivamente persistido, sem atualização parcial apresentada como recuperação concluída.
+
+### RF-031 — Identificação e exclusividade da instância
 
 Cada inicialização válida do Odyssey AV deverá possuir um identificador único de instância (`instance_id`).
 
 As execuções registradas deverão estar associadas à instância responsável por sua execução.
 
 O sistema deverá impedir a operação simultânea de múltiplas instâncias ativas no MVP, utilizando mecanismo de bloqueio exclusivo compatível com Windows e Linux.
+
+O bloqueio deverá permanecer ativo durante toda a operação da instância, inclusive quando a aplicação estiver em modo degradado.
 
 ### RF-032 — Separação entre resultado funcional e histórico
 
@@ -263,6 +271,28 @@ O sistema deverá apresentar separadamente:
 Uma falha de persistência não deverá transformar automaticamente uma operação funcional bem-sucedida em falha funcional.
 
 Quando não for possível registrar uma execução ou seus resultados, a CLI deverá informar claramente essa condição.
+
+O sistema não deverá afirmar que os resultados foram registrados quando a persistência não tiver sido confirmada.
+
+### RF-033 — Operação em modo degradado
+
+Caso a recuperação transacional do histórico falhe durante a inicialização, o sistema deverá entrar em modo operacional degradado.
+
+Nesse estado:
+
+- O bloqueio exclusivo deverá permanecer ativo.
+- A falha de recuperação deverá ser comunicada claramente.
+- Os módulos FILE, HASH, NETWORK, PASSWORD, URL e PROCESS deverão continuar disponíveis.
+- Novas gravações no histórico deverão permanecer desabilitadas.
+- O módulo HISTORY deverá ficar indisponível para consultas e exportações.
+- A aplicação não deverá afirmar que resultados foram registrados.
+- A falha de persistência deverá permanecer separada do resultado funcional das operações.
+- Não deverá ser utilizado mecanismo alternativo de armazenamento.
+- Registros antigos `RUNNING` não deverão ser marcados como `INTERRUPTED` quando a transação de recuperação não tiver sido concluída.
+
+Uma nova tentativa de recuperação deverá ocorrer em uma inicialização posterior.
+
+O modo degradado deverá ser distinguido dos estados individuais das execuções.
 
 # 4. Requisitos não funcionais
 
@@ -381,13 +411,16 @@ Os registros de execução deverão manter associação inequívoca com o identi
 | Requisito | Regra relacionada |
 |---|---|
 | RF-001 a RF-004 | RN-001, RN-003, RN-010, RN-012 |
-| RF-005 a RF-008 | RN-002, RN-004, RN-010 |
+| RF-005 a RF-008 | RN-002, RN-003, RN-004 |
 | RF-009 a RF-012 | RN-007, RN-012 |
 | RF-013 a RF-016 | RN-005, RN-010 |
 | RF-017 a RF-020 | RN-003, RN-006 |
 | RF-021 a RF-024 | RN-008, RN-012 |
-| RF-025 a RF-031 | RN-009, RN-010 |
+| RF-025 a RF-028 | RN-009, RN-010, RN-011 |
+| RF-029 | RN-001, RN-010, RN-012 |
+| RF-030 a RF-031 | RN-009 |
 | RF-032 | RN-013 |
+| RF-033 | RN-009, RN-013 |
 
 ## 5.2. Requisitos não funcionais e áreas relacionadas
 
@@ -444,6 +477,8 @@ Essas funcionalidades não fazem parte dos requisitos da primeira versão.
 11. O sistema deverá permitir somente uma instância ativa por vez.
 12. A consulta e exportação do histórico não deverão gerar registros recursivos.
 13. O sistema deverá funcionar sem dependência obrigatória de serviços remotos, exceto nas operações externas explicitamente solicitadas.
+14. A falha na recuperação transacional do histórico deverá resultar em modo degradado, sem desabilitar as ferramentas funcionais.
+15. O modo degradado não deverá permitir novas gravações ou operações de HISTORY.
 
 # 8. Critérios gerais de aceitação
 
@@ -458,11 +493,16 @@ O conjunto de requisitos será considerado atendido quando:
 - Arquivos especiais não permitidos forem rejeitados.
 - Operações externas ocorrerem somente quando solicitadas.
 - Nenhum dado de senha for persistido.
-- O histórico registrar adequadamente as execuções funcionais.
+- O histórico registrar adequadamente as execuções funcionais quando disponível.
 - Execuções interrompidas forem recuperadas conforme o mecanismo definido.
+- A recuperação do histórico ocorrer transacionalmente.
 - A aplicação impedir múltiplas instâncias ativas.
 - A falha de persistência for comunicada separadamente do resultado funcional.
-- A exportação JSON e CSV funcionar.
+- O modo degradado preservar a disponibilidade dos módulos funcionais.
+- O modo degradado impedir novas gravações e operações de HISTORY.
+- Registros antigos não forem alterados quando a transação de recuperação falhar.
+- A aplicação tentar novamente a recuperação em inicialização posterior.
+- A exportação JSON e CSV funcionar quando o histórico estiver disponível.
 - Os limites operacionais forem aplicados e testados.
 - A configuração TOML respeitar a precedência definida.
 - O sistema funcionar nos ambientes Windows e Linux suportados.
@@ -474,17 +514,18 @@ O conjunto de requisitos será considerado atendido quando:
 | Critério | Situação |
 |---|---|
 | Escopo funcional | Definido |
-| Requisitos funcionais | 32 definidos |
+| Requisitos funcionais | 33 definidos |
 | Requisitos não funcionais | 18 definidos |
 | Regras de negócio relacionadas | Mapeadas |
-| Recuperação de execuções | Definida |
+| Recuperação de execuções | Definida transacionalmente |
 | Identificação de instância | Definida |
 | Proteção de dados sensíveis | Definida |
+| Modo degradado | Definido |
 | Limites operacionais | Definidos conceitualmente |
 | Configuração TOML | Definida |
 | Limitações do MVP | Definidas |
 | Premissas e restrições | Definidas |
 | Critérios gerais de aceitação | Definidos |
-| Revisão cruzada | Pendente |
+| Revisão cruzada | Em andamento |
 
-**Total:** 50 requisitos documentados.
+**Total: 51 requisitos documentados.**
