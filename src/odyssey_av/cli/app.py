@@ -8,13 +8,12 @@ from odyssey_av.shared.logging.logger import configure_logging
 app = typer.Typer(
     name="odyssey",
     help="Ferramenta modular de diagnóstico e análise de segurança.",
-    no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
 )
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def root(
     ctx: typer.Context,
     json_output: bool = typer.Option(
@@ -38,3 +37,7 @@ def root(
     configure_logging(config.log_level)
 
     ctx.obj = config
+
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(code=0)
