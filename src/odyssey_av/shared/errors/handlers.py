@@ -64,3 +64,9 @@ def report_error(error: BaseException, stream: TextIO | None = None) -> ExitCode
 
     print("Erro inesperado. A operação foi interrompida.", file=output)
     return ExitCode.FUNCTIONAL_FAILURE
+
+
+class PersistenceError(OdysseyError):
+    """Falha ao acessar o histórico, por SQLite indisponível ou inconsistente."""
+
+    exit_code = ExitCode.FUNCTIONAL_FAILURE

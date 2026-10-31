@@ -1,0 +1,1 @@
+"""Persistência local do histórico em SQLite."""

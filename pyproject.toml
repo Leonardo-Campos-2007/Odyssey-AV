@@ -51,3 +51,7 @@ branch = true
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
+
+
+[tool.setuptools.package-data]
+"odyssey_av.infrastructure.persistence" = ["migrations/*.sql"]
