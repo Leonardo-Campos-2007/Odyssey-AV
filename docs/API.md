@@ -214,13 +214,24 @@ O contrato aprovado define o comando e os tipos de verificação, mas ainda não
 
 A consulta de IP público dependerá de serviço externo e deverá ser opcional.
 
-### 4.4. PASSWORD — Ferramentas de senha
+### 4.4. PASSWORD: ferramentas de senha
 
 **Geração:**
 
 ```bash
-odyssey password generate
+odyssey password generate [--length N] [--no-upper] [--no-digits] [--no-symbols]
 ```
+
+- `--length N`: comprimento da senha. Padrão: 16. Limites provisórios: mínimo 8 e máximo 128, sujeitos a revisão no D-03.
+- Por padrão, o alfabeto inclui letras maiúsculas, minúsculas, dígitos e símbolos. Cada flag `--no-*` remove o conjunto correspondente.
+- Se a combinação de parâmetros não permitir gerar uma senha (por exemplo, todos os conjuntos removidos), o comando retorna código `2`.
+- A geração usa o módulo `secrets`.
+
+**Saída:**
+
+- A senha gerada aparece na saída destinada ao usuário, em texto ou no campo correspondente do JSON.
+- Quando a saída for JSON, o `stderr` informa que a senha não é armazenada pelo Odyssey AV.
+- A senha nunca é gravada no histórico, em logs, em mensagens de erro nem em `AnalysisResult`. O registro guarda somente o comprimento e os conjuntos utilizados.
 
 **Avaliação:**
 
@@ -228,29 +239,16 @@ odyssey password generate
 odyssey password evaluate
 ```
 
-**Comportamento:**
-
-- Gerar senhas utilizando fonte aleatória criptograficamente segura.
-- Permitir configurar comprimento e conjuntos de caracteres.
-- Avaliar localmente características básicas de uma senha.
-
-O contrato aprovado não define nomes de opções, comprimento padrão, conjuntos de caracteres habilitados por padrão nem regras de composição. Esses detalhes deverão ser consolidados antes da implementação. A avaliação continuará interativa e sem eco, conforme as regras de segurança abaixo.
-
-A senha avaliada deverá ser recebida de maneira que não seja exposta em argumentos visíveis do processo ou no histórico do terminal. O mecanismo de entrada deverá ser interativo e ocultar a digitação quando aplicável.
-
-A senha não deverá ser aceita diretamente como argumento de linha de comando. A senha gerada deverá ser apresentada somente na saída destinada ao usuário e não deverá ser persistida.
+- A senha é solicitada de forma interativa, com a digitação oculta. Nunca é aceita como argumento de linha de comando.
+- Se a entrada padrão não for um terminal interativo, o comando é recusado com código `2`, em vez de ler a senha de um pipe ou de um arquivo sem aviso.
+- A avaliação é local e não envia a senha a nenhum serviço externo.
+- O resultado apresenta indicadores de composição e uma estimativa de qualidade, sem apresentar a senha nem uma garantia de segurança absoluta.
 
 **Restrições obrigatórias:**
 
-- Não persistir senhas.
-- Não incluir senhas em logs.
-- Não incluir senhas em mensagens de erro.
-- Não incluir senhas em argumentos registrados.
-- Não exportar senhas em relatórios.
-- Não manter a senha em `AnalysisResult`.
-- Não incluir a senha em resumos ou dados estruturados de saída que sejam destinados ao histórico.
-
-A execução do módulo poderá ser registrada, mas somente com metadados operacionais e informações sanitizadas.
+- Nenhum valor de senha em histórico, logs, mensagens de erro, `AnalysisResult.data` ou relatórios exportados.
+- A execução do módulo pode ser registrada, com metadados operacionais e informações sanitizadas.
+- Em `DEGRADED`, o módulo funciona normalmente, mas não tenta gravar nada.
 
 ### 4.5. URL — Análise de endereços
 
@@ -543,7 +541,7 @@ Os critérios de aceitação relacionados estão identificados como `CT-XXX` em 
 | Registro de execuções | Definido |
 | Proteção de senhas | Definida |
 | Limites operacionais | Política definida; valores pendentes |
-| Sintaxe específica de opções NETWORK, PASSWORD e HISTORY | Refinamento técnico pendente, sem alteração dos requisitos funcionais aprovados |
+| Sintaxe específica de opções NETWORK e HISTORY | Refinamento técnico pendente, sem alteração dos requisitos funcionais aprovados |
 | Sintaxe comum de saída JSON e limites de listagem/exportação | Refinamento técnico pendente |
 | Rastreabilidade | Referências revisadas e alinhadas com os requisitos, regras, backlog e testes |
 | Revisão cruzada | Concluída |

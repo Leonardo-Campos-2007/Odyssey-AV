@@ -170,6 +170,7 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 
 | ID | Decisão | Situação |
 |---|---|---|
+| D-01 | Sintaxe de PASSWORD: `generate` com `--length` (padrão 16) e flags `--no-*`, com todos os conjuntos incluídos por padrão. `evaluate` com entrada oculta, recusada quando `stdin` não é terminal. A senha gerada aparece no JSON, com aviso no `stderr` de que não é armazenada | Resolvido. Atualiza `API.md`, seção 4.4 |
 | D-04 | Campo `command` é normalizado, com nome do operação e nome do arquivo | Resolvido |
 | D-05 | Só o nome do arquivo entra no `command`, sem diretórios, para não expor dados pessoais | Resolvido |
 | D-06 | `hash compare` exige `--reference`. `NO_REFERENCE` existe somente no `calculate` | Resolvido |
@@ -193,8 +194,7 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 
 | ID | Assunto | Quando decidir |
 |---|---|---|
-| D-01 | Sintaxe de PASSWORD: `generate` com `--length` e flags `--no-*`; `evaluate` com entrada oculta e recusa quando `stdin` não é terminal. Inclusão da senha gerada no JSON da saída | Antes da Fase D (aguardando resposta) |
-| D-01b | Sintaxe de NETWORK e HISTORY (filtros, paginação, destino da exportação) | Antes das fases E e F |
+| D-01 | Sintaxe de NETWORK e HISTORY (filtros, paginação, destino da exportação) | Antes das fases E e F |
 | D-02 | Alvos de conectividade, domínio DNS padrão e serviço de IP público | Antes da Fase E |
 | D-03 | Valores numéricos dos limites operacionais (RNF-015): tamanho de bloco, tempo de rede, quantidade de processos e de registros exportados | Ao implementar cada módulo |
 | D-07 | Fixar `ubuntu-24.04` no CI e atualizar as actions | Quando for conveniente |
