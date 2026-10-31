@@ -1,9 +1,9 @@
 # BACKLOG.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Escopo:** MVP  
-**Status:** Consolidado para revisão
+**Status:** Consolidado para revisão cruzada
 
 ---
 
@@ -13,9 +13,9 @@ Este documento organiza o desenvolvimento do MVP do Odyssey AV em épicos, hist�
 
 O backlog estabelece uma sequência de implementação baseada nas dependências entre funcionalidades, na arquitetura definida e nos requisitos documentados.
 
-Seu objetivo é permitir o desenvolvimento incremental, mantendo a rastreabilidade entre requisitos, regras de negócio, segurança, testes e entregas.
+Seu objetivo é manter a rastreabilidade entre requisitos, regras de negócio, segurança, testes e entregas.
 
-Os itens deste documento representam o escopo aprovado para o MVP. Funcionalidades futuras não deverão ser incorporadas sem decisão explícita.
+Os itens deste documento representam o escopo do MVP. Funcionalidades futuras não deverão ser incorporadas sem decisão explícita.
 
 # 2. Escopo do MVP
 
@@ -39,6 +39,7 @@ Também fazem parte do MVP:
 - Tratamento padronizado de erros.
 - Controle de instância única.
 - Recuperação de execuções interrompidas.
+- Modo degradado quando a recuperação do histórico falhar.
 - Testes automatizados.
 - Compatibilidade com Windows e Linux.
 
@@ -83,7 +84,7 @@ Como usuário, quero executar o Odyssey AV por uma interface de linha de comando
 **Critérios de aceitação:**
 
 - A aplicação deve iniciar pela CLI.
-- Os comandos devem possuir uma estrutura organizada.
+- Os comandos devem possuir estrutura organizada.
 - A CLI deve encaminhar operações para a camada de aplicação.
 - Erros devem ser apresentados de maneira compreensível.
 - A estrutura deve respeitar a arquitetura modular definida.
@@ -98,8 +99,8 @@ Como usuário, quero executar o Odyssey AV por uma interface de linha de comando
 - TEC-004 — Criar estrutura inicial de diretórios.
 - TEC-005 — Implementar ponto de entrada da aplicação.
 - TEC-006 — Implementar tratamento centralizado de erros.
-- TEC-080 — Implementar os contratos de saída textual e JSON.
-- TEC-081 — Implementar os códigos de saída definidos em API.md.
+- TEC-080 — Implementar contratos de saída textual e JSON.
+- TEC-081 — Implementar códigos de saída definidos em `API.md`.
 
 ### US-002 — Configurar serviços transversais
 
@@ -137,8 +138,8 @@ Como desenvolvedor, quero serviços compartilhados de configuração, validaçã
 
 - **Épico:** EP-001
 - **Prioridade:** P0
-- **Sprint:** 1
-- **Dependências:** US-001, US-002
+- **Sprint:** 1 e 2, conforme as tarefas
+- **Dependências:** US-001, US-002 e US-003 para recuperação do histórico
 
 **História:**
 
@@ -152,8 +153,10 @@ Como usuário, quero que somente uma instância do Odyssey AV execute operaçõe
 - O bloqueio deverá ser liberado após encerramento normal.
 - O bloqueio deverá ser liberado pelo sistema operacional após encerramento inesperado.
 - A recuperação do histórico deverá ocorrer após a aquisição do bloqueio.
-- Registros `RUNNING` de instâncias anteriores deverão ser marcados como `INTERRUPTED`.
+- Registros `RUNNING` de instâncias anteriores deverão ser marcados como `INTERRUPTED`, quando a recuperação for concluída.
 - A identificação da instância não deverá depender exclusivamente do PID.
+- Se a recuperação falhar, a aplicação deverá entrar em modo degradado.
+- O bloqueio exclusivo deverá permanecer ativo durante o modo degradado.
 - O comportamento deverá ser validado em Windows e Linux.
 
 **Tarefas técnicas:**
@@ -162,9 +165,20 @@ Como usuário, quero que somente uma instância do Odyssey AV execute operaçõe
 - TEC-085 — Implementar mecanismo de bloqueio exclusivo para Windows e Linux.
 - TEC-086 — Gerar UUID por inicialização.
 - TEC-087 — Implementar liberação do bloqueio no encerramento normal.
-- TEC-088 — Implementar recuperação de registros RUNNING anteriores.
+- TEC-088 — Implementar recuperação de registros RUNNING anteriores após a disponibilidade da persistência.
 - TEC-089 — Implementar tratamento de falha na aquisição do bloqueio.
 - TEC-090 — Criar testes de ciclo de vida e recuperação.
+- TEC-109 — Implementar estado operacional NORMAL e DEGRADED.
+- TEC-110 — Implementar transição para modo degradado diante de falha na recuperação.
+- TEC-111 — Impedir gravações no SQLite enquanto degradado.
+- TEC-112 — Bloquear consultas e exportações do HISTORY enquanto degradado.
+- TEC-113 — Informar ao usuário a indisponibilidade do histórico e a não persistência das operações.
+- TEC-114 — Garantir nova tentativa de recuperação em inicialização posterior.
+
+**Separação de execução:**
+
+- Na Sprint 1 serão implementados o bloqueio exclusivo, o identificador da instância e seu ciclo de vida.
+- Na Sprint 2 serão implementadas a recuperação do histórico e a transição para modo degradado, pois essas operações dependem do SQLite.
 
 ## EP-002 — Persistência e histórico
 
@@ -173,7 +187,7 @@ Como usuário, quero que somente uma instância do Odyssey AV execute operaçõe
 - **Épico:** EP-002
 - **Prioridade:** P0
 - **Sprint:** 2
-- **Dependências:** US-001, US-002, US-017
+- **Dependências:** US-001, US-002 e aquisição de instância de US-017
 
 **História:**
 
@@ -189,8 +203,9 @@ Como usuário, quero que as execuções das ferramentas sejam registradas para c
 - Os registros devem utilizar os estados definidos no domínio.
 - Cada execução deverá possuir `instance_id`.
 - Informações sensíveis não devem ser persistidas.
-- Execuções funcionais deverão ser registradas mesmo quando terminarem com falha.
+- Execuções funcionais deverão ser registradas mesmo quando terminarem com falha, desde que a persistência esteja disponível.
 - Falhas de persistência deverão ser comunicadas separadamente do resultado funcional.
+- Nenhuma gravação deverá ser realizada em modo degradado.
 
 **Tarefas técnicas:**
 
@@ -239,7 +254,7 @@ Como usuário, quero que os resultados das análises sejam associados às suas e
 - **Épico:** EP-002
 - **Prioridade:** P1
 - **Sprint:** 5
-- **Dependências:** US-003, US-004
+- **Dependências:** US-003, US-004 e estado operacional NORMAL
 
 **História:**
 
@@ -252,9 +267,10 @@ Como usuário, quero consultar o histórico de execuções para visualizar anál
 - Deve ser possível consultar por estado.
 - Os resultados associados devem poder ser consultados.
 - Consultas não devem criar novas execuções.
-- Consultas vazias devem apresentar uma resposta adequada.
+- Consultas vazias devem apresentar resposta adequada.
 - A consulta deverá respeitar limites e paginação.
 - Os filtros deverão utilizar consultas parametrizadas.
+- Consultas deverão ser recusadas em modo degradado.
 
 **Tarefas técnicas:**
 
@@ -263,6 +279,7 @@ Como usuário, quero consultar o histórico de execuções para visualizar anál
 - TEC-024 — Implementar comandos de consulta na CLI.
 - TEC-096 — Implementar paginação e limites de consulta.
 - TEC-097 — Testar ausência de recursão no histórico.
+- TEC-112 — Bloquear consultas HISTORY em modo degradado.
 
 ### US-006 — Exportar relatórios
 
@@ -284,6 +301,7 @@ Como usuário, quero exportar os resultados do histórico para arquivos JSON e C
 - Senhas e outros segredos não podem ser exportados.
 - Exportações não devem criar novas execuções.
 - A exportação deverá respeitar limites operacionais.
+- Exportações deverão ser recusadas em modo degradado.
 
 **Tarefas técnicas:**
 
@@ -301,7 +319,7 @@ Como usuário, quero exportar os resultados do histórico para arquivos JSON e C
 - **Épico:** EP-003
 - **Prioridade:** P0
 - **Sprint:** 3
-- **Dependências:** US-001, US-002, US-003, US-004
+- **Dependências:** US-001, US-002, US-003 e US-004
 
 **História:**
 
@@ -341,7 +359,7 @@ Como usuário, quero analisar arquivos para identificar metadados e possíveis d
 - **Épico:** EP-003
 - **Prioridade:** P0
 - **Sprint:** 3
-- **Dependências:** US-001, US-002, US-003, US-004
+- **Dependências:** US-001, US-002, US-003 e US-004
 
 **História:**
 
@@ -373,7 +391,7 @@ Como usuário, quero calcular e comparar hashes SHA-256 para verificar a integri
 - **Épico:** EP-004
 - **Prioridade:** P1
 - **Sprint:** 4
-- **Dependências:** US-001, US-002
+- **Dependências:** US-001 e US-002
 
 **História:**
 
@@ -400,7 +418,7 @@ Como usuário, quero gerar senhas com parâmetros configuráveis para criar cred
 - **Épico:** EP-004
 - **Prioridade:** P1
 - **Sprint:** 4
-- **Dependências:** US-001, US-002
+- **Dependências:** US-001 e US-002
 
 **História:**
 
@@ -427,7 +445,7 @@ Como usuário, quero avaliar características de uma senha para entender sua qua
 - **Épico:** EP-004
 - **Prioridade:** P1
 - **Sprint:** 4
-- **Dependências:** US-001, US-002, US-003, US-004
+- **Dependências:** US-001, US-002, US-003 e US-004
 
 **História:**
 
@@ -458,7 +476,7 @@ Como usuário, quero analisar URLs para identificar características estruturais
 - **Épico:** EP-005
 - **Prioridade:** P1
 - **Sprint:** 4
-- **Dependências:** US-001, US-002, US-003, US-004
+- **Dependências:** US-001, US-002, US-003 e US-004
 
 **História:**
 
@@ -490,7 +508,7 @@ Como usuário, quero verificar conectividade e resolução DNS para identificar 
 - **Épico:** EP-006
 - **Prioridade:** P1
 - **Sprint:** 5
-- **Dependências:** US-001, US-002, US-003, US-004
+- **Dependências:** US-001, US-002, US-003 e US-004
 
 **História:**
 
@@ -521,7 +539,7 @@ Como usuário, quero listar processos em execução para consultar informações
 - **Épico:** EP-007
 - **Prioridade:** P0
 - **Sprint:** 6
-- **Dependências:** US-007, US-008, US-009, US-010, US-011, US-012, US-013, US-017
+- **Dependências:** US-007, US-008, US-009, US-010, US-011, US-012, US-013 e US-017
 
 **História:**
 
@@ -540,6 +558,9 @@ Como usuário, quero que as ferramentas respeitem os controles de segurança def
 - A aplicação não deve solicitar elevação automática de privilégios.
 - O controle de instância única deverá funcionar.
 - Falhas de persistência deverão ser comunicadas sem alterar indevidamente o resultado funcional.
+- A recuperação do histórico deverá ser validada.
+- O modo degradado deverá impedir operações HISTORY e novas gravações.
+- O bloqueio exclusivo deverá permanecer ativo durante o modo degradado.
 
 **Tarefas técnicas:**
 
@@ -551,13 +572,16 @@ Como usuário, quero que as ferramentas respeitem os controles de segurança def
 - TEC-104 — Validar proteção de senhas em todos os fluxos.
 - TEC-105 — Validar bloqueio de instância e recuperação.
 - TEC-106 — Validar tratamento de falhas de persistência.
+- TEC-115 — Validar entrada e permanência em modo degradado.
+- TEC-116 — Validar bloqueio de HISTORY e ausência de gravações durante modo degradado.
+- TEC-117 — Validar nova tentativa de recuperação após reinicialização.
 
 ### US-015 — Validar integração e regressão
 
 - **Épico:** EP-007
 - **Prioridade:** P0
 - **Sprint:** 6
-- **Dependências:** US-003, US-004, US-007, US-008, US-009, US-010, US-011, US-012, US-013, US-017
+- **Dependências:** US-003, US-004, US-007, US-008, US-009, US-010, US-011, US-012, US-013 e US-017
 
 **História:**
 
@@ -566,13 +590,14 @@ Como desenvolvedor, quero validar os fluxos completos da aplicação para garant
 **Critérios de aceitação:**
 
 - Os módulos devem funcionar pela CLI.
-- As execuções devem ser registradas corretamente.
+- As execuções devem ser registradas corretamente quando a persistência estiver disponível.
 - Os resultados devem estar associados às execuções.
-- O histórico deve permitir consulta e exportação.
+- O histórico deve permitir consulta e exportação quando disponível.
 - Os testes de regressão devem ser aprovados.
 - Falhas de um módulo não devem comprometer indevidamente os demais.
 - A recuperação de execuções interrompidas deverá funcionar.
 - A separação entre operação funcional e persistência deverá ser validada.
+- Os fluxos de modo normal e degradado deverão ser validados.
 
 **Tarefas técnicas:**
 
@@ -582,13 +607,14 @@ Como desenvolvedor, quero validar os fluxos completos da aplicação para garant
 - TEC-073 — Validar controle de instância única e acesso ao SQLite.
 - TEC-074 — Verificar cobertura de testes.
 - TEC-075 — Corrigir falhas de integração.
+- TEC-118 — Validar os fluxos completos de operação em modo degradado.
 
 ### US-016 — Validar compatibilidade Windows e Linux
 
 - **Épico:** EP-007
 - **Prioridade:** P1
 - **Sprint:** 6
-- **Dependências:** US-007, US-012, US-013, US-015, US-017
+- **Dependências:** US-007, US-012, US-013, US-015 e US-017
 
 **História:**
 
@@ -603,6 +629,7 @@ Como usuário, quero executar o Odyssey AV em Windows e Linux para utilizar as f
 - Os módulos devem manter comportamento consistente quando as funcionalidades forem suportadas.
 - O bloqueio exclusivo deverá funcionar nos dois sistemas.
 - O encerramento e a recuperação deverão ser testados nas duas plataformas.
+- O modo degradado deverá manter o comportamento definido nas duas plataformas.
 
 **Tarefas técnicas:**
 
@@ -612,6 +639,7 @@ Como usuário, quero executar o Odyssey AV em Windows e Linux para utilizar as f
 - TEC-079 — Corrigir incompatibilidades encontradas.
 - TEC-107 — Validar mecanismo de bloqueio no Windows.
 - TEC-108 — Validar mecanismo de bloqueio no Linux.
+- TEC-119 — Validar modo degradado no Windows e Linux.
 
 # 6. Planejamento das Sprints
 
@@ -622,60 +650,73 @@ As Sprints terão duração aproximada de duas semanas. A distribuição represe
 **Objetivo:** preparar a estrutura da aplicação e seu controle de execução.
 
 **Histórias:**
+
 - US-001 — Preparar estrutura da aplicação.
 - US-002 — Configurar serviços transversais.
-- US-017 — Controlar ciclo de vida e instância da aplicação.
+- US-017 — Controlar ciclo de vida e instância da aplicação, limitado à aquisição e liberação do bloqueio e identificação da instância.
 
 **Incremento esperado:**
+
 - Projeto Python inicializado.
 - CLI funcional.
 - Estrutura modular criada.
 - Configuração e logs centralizados.
 - Controle de instância única.
 - Identificador UUID por inicialização.
+- Bloqueio exclusivo validado em Windows e Linux.
 
-## Sprint 2 — Persistência
+## Sprint 2 — Persistência e recuperação
 
-**Objetivo:** implementar a base de armazenamento e rastreabilidade.
+**Objetivo:** implementar o armazenamento, a integridade dos registros e a recuperação de execuções anteriores.
 
 **Histórias:**
+
 - US-003 — Registrar execuções.
 - US-004 — Registrar resultados.
+- US-017 — Concluir ciclo de vida e recuperação do histórico.
 
 **Incremento esperado:**
+
 - SQLite configurado.
 - Entidades persistidas.
 - Relacionamento entre execução e resultado.
 - Estados de execução definidos.
 - Transações e integridade referencial testadas.
 - Separação entre resultado funcional e persistência.
+- Recuperação de registros RUNNING anteriores.
+- Estado operacional NORMAL e DEGRADED.
+- Bloqueio de novas gravações e HISTORY durante modo degradado.
 
 ## Sprint 3 — Arquivos e integridade
 
 **Objetivo:** entregar as primeiras ferramentas de análise.
 
 **Histórias:**
+
 - US-007 — Analisar arquivos.
 - US-008 — Calcular e comparar hashes.
 
 **Incremento esperado:**
+
 - Análise estrutural de arquivos.
 - Identificação de assinaturas suportadas.
 - Cálculo SHA-256.
 - Comparação de hashes.
-- Resultados registrados no histórico.
+- Resultados registrados no histórico quando a persistência estiver disponível.
 
 ## Sprint 4 — Ferramentas locais e rede
 
 **Objetivo:** implementar ferramentas de senha, URL e diagnóstico de rede.
 
 **Histórias:**
+
 - US-009 — Gerar senhas seguras.
 - US-010 — Avaliar senhas.
 - US-011 — Analisar URLs.
 - US-012 — Diagnosticar conectividade e DNS.
 
 **Incremento esperado:**
+
 - Geração e avaliação local de senhas.
 - Análise estrutural de URLs.
 - Diagnóstico de conectividade e DNS.
@@ -686,47 +727,99 @@ As Sprints terão duração aproximada de duas semanas. A distribuição represe
 **Objetivo:** completar as ferramentas restantes e disponibilizar consultas e relatórios.
 
 **Histórias:**
+
 - US-013 — Listar processos do sistema.
 - US-005 — Consultar histórico.
 - US-006 — Exportar relatórios.
 
 **Incremento esperado:**
+
 - Listagem e filtros de processos.
 - Consulta do histórico.
 - Exportação JSON e CSV.
 - Sete módulos funcionais disponíveis.
+- HISTORY respeitando o estado operacional da aplicação.
 
 ## Sprint 6 — Qualidade e estabilização
 
 **Objetivo:** validar a aplicação completa antes de considerar o MVP concluído.
 
 **Histórias:**
+
 - US-014 — Validar segurança.
 - US-015 — Validar integração e regressão.
 - US-016 — Validar compatibilidade Windows e Linux.
 
 **Incremento esperado:**
+
 - Testes de segurança aprovados.
 - Testes de integração e regressão aprovados.
 - Compatibilidade verificada.
 - Recuperação de execuções interrompidas validada.
+- Modo degradado validado.
 - Correções críticas concluídas.
 
 # 7. Matriz de rastreabilidade
 
-A matriz abaixo relaciona os épicos aos requisitos e regras de negócio. O vínculo detalhado entre cada história e cada caso de teste deverá ser validado na revisão cruzada dos documentos.
+A matriz relaciona os épicos aos requisitos e regras de negócio. O vínculo detalhado entre histórias, critérios de aceitação e casos de teste é apresentado na seção seguinte.
 
 | Épico | Requisitos relacionados | Regras relacionadas |
 |---|---|---|
-| EP-001 | RF-029 a RF-032, RNF-001, RNF-002, RNF-010, RNF-011, RNF-012, RNF-013, RNF-016, RNF-017, RNF-018 | RN-007, RN-010, RN-012 |
-| EP-002 | RF-025 a RF-028, RF-030 a RF-032, RNF-007, RNF-015, RNF-018 | RN-009, RN-010, RN-011 |
-| EP-003 | RF-001 a RF-008, RF-029, RNF-003, RNF-004, RNF-008, RNF-015 | RN-001, RN-002, RN-003, RN-004, RN-010 |
-| EP-004 | RF-013 a RF-020, RNF-004, RNF-005, RNF-015 | RN-005, RN-006 |
-| EP-005 | RF-009 a RF-012, RNF-006, RNF-009, RNF-015 | RN-007 |
-| EP-006 | RF-021 a RF-024, RNF-001, RNF-002, RNF-015 | RN-008, RN-012 |
+| EP-001 | RF-029 a RF-032; RNF-001, RNF-002, RNF-010 a RNF-013, RNF-016 a RNF-019 | RN-007, RN-009, RN-010, RN-012, RN-014 |
+| EP-002 | RF-025 a RF-028, RF-030 a RF-032; RNF-007, RNF-015, RNF-018, RNF-019 | RN-009, RN-010, RN-011, RN-013, RN-014 |
+| EP-003 | RF-001 a RF-008, RF-029; RNF-003, RNF-004, RNF-008, RNF-015 | RN-001, RN-002, RN-003, RN-004, RN-010 |
+| EP-004 | RF-013 a RF-020; RNF-004, RNF-005, RNF-015 | RN-005, RN-006 |
+| EP-005 | RF-009 a RF-012; RNF-006, RNF-009, RNF-015 | RN-007 |
+| EP-006 | RF-021 a RF-024; RNF-001, RNF-002, RNF-015 | RN-008, RN-012 |
 | EP-007 | Requisitos funcionais e não funcionais aplicáveis ao MVP | Regras de negócio aplicáveis ao MVP |
 
-# 8. Definition of Ready
+**Observação:** as referências RF/RNF/RN deverão ser conferidas na revisão global de `REQUISITOS.md` e `REGRAS-DE-NEGOCIO.md`. Esta matriz não autoriza criar requisitos ou regras que não estejam documentados.
+
+# 8. Matriz de rastreabilidade dos critérios de aceitação e testes
+
+Os identificadores CT representam critérios verificáveis de aceitação. Os IDs de teste apontam para os casos documentados em `TESTES.md`.
+
+| ID | História | Critério verificável | Testes relacionados |
+|---|---|---|---|
+| CT-001 | US-001 | Inicialização, organização dos comandos e ajuda da CLI | TC-CLI-001 a TC-CLI-011 |
+| CT-002 | US-002 | Configuração opcional, validação e precedência TOML | Testes de configuração em TESTES.md |
+| CT-003 | US-017 | Aquisição e exclusividade do bloqueio | TCO-001, TCO-002 |
+| CT-004 | US-017 | Liberação do bloqueio em encerramento normal e inesperado | TCO-003, TCO-004 |
+| CT-005 | US-017 | UUID distinto por inicialização e associação correta | TCO-006, TCO-007 |
+| CT-006 | US-003 | Registro de execução, estados e horários | TU-HIST-001, TI-002, TB-001 |
+| CT-007 | US-004 | Associação de resultados e integridade referencial | TU-HIST-002, TB-002, TB-003, TB-007 |
+| CT-008 | US-003, US-004 | Separação entre resultado funcional e persistência | TI-008, TR-006, TS-017 |
+| CT-009 | US-003, US-004 | Proteção contra persistência de segredos | TU-HIST-011, TU-HIST-015, TS-014 |
+| CT-010 | US-005 | Consultas por módulo, período e estado | TU-HIST-003 a TU-HIST-005 |
+| CT-011 | US-005 | Consultas sem recursão e com paginação | TU-HIST-009, TID-001 |
+| CT-012 | US-006 | Exportação JSON e CSV válida | TU-HIST-006, TU-HIST-007, TI-004 |
+| CT-013 | US-006 | Exportação sem senhas ou segredos | TU-HIST-010, TS-009, TS-018 |
+| CT-014 | US-007 | Análise de metadados e assinaturas | TU-FILE-001, TU-FILE-013 a TU-FILE-020 |
+| CT-015 | US-007 | Rejeição de arquivos especiais e tratamento de links | TU-FILE-008 a TU-FILE-010, TS-011 a TS-013 |
+| CT-016 | US-007 | Tratamento de alteração ou desaparecimento de arquivo | TU-FILE-011, TU-FILE-012, TS-014 |
+| CT-017 | US-008 | Cálculo SHA-256 e processamento em blocos | TU-HASH-001, TU-HASH-002, TU-HASH-007 |
+| CT-018 | US-008 | Comparação de referência fornecida pelo usuário | TU-HASH-003 a TU-HASH-006 |
+| CT-019 | US-009 | Geração segura e validação de parâmetros | TU-PASS-001, TU-PASS-002, TU-PASS-005 |
+| CT-020 | US-010 | Avaliação local sem persistência ou exposição | TU-PASS-003, TU-PASS-004, TU-PASS-007, TU-PASS-008 |
+| CT-021 | US-011 | Análise estrutural local sem requisições automáticas | TU-URL-001 a TU-URL-007 |
+| CT-022 | US-012 | Diagnóstico DNS, conectividade e timeout | TU-NET-001 a TU-NET-008 |
+| CT-023 | US-013 | Listagem e filtros de processos sem modificação | TU-PROC-001 a TU-PROC-007 |
+| CT-024 | US-017 | Recuperação de registros RUNNING anteriores | TU-HIST-013, TI-013, TS-016, TCO-005 |
+| CT-025 | US-017 | Falha de recuperação resulta em modo degradado | TI-014, TS-019, TR-008 |
+| CT-026 | US-017 | Modo degradado impede novas gravações | TU-HIST-018, TS-021, TB-013 |
+| CT-027 | US-005, US-006, US-017 | HISTORY indisponível em modo degradado | TU-HIST-016, TU-HIST-017, TI-021, TS-020 |
+| CT-028 | US-017 | Ferramentas funcionais permanecem disponíveis em modo degradado | TI-015 a TI-020, TI-024 |
+| CT-029 | US-017 | Bloqueio exclusivo permanece ativo em modo degradado | TCO-008, TCO-009 |
+| CT-030 | US-017 | Nova inicialização tenta recuperar o histórico | TI-022, TS-023 |
+| CT-031 | US-017 | Falha de recuperação não altera indevidamente registros antigos | TI-023, TR-007, TS-024 |
+| CT-032 | US-014 | Controles de segurança aplicados aos módulos | TS-001 a TS-018 |
+| CT-033 | US-015 | Fluxos completos e regressão aprovados | Testes de integração e regressão |
+| CT-034 | US-016 | Compatibilidade Windows/Linux | Testes de compatibilidade em TESTES.md |
+| CT-035 | US-017 | Modo degradado validado em Windows/Linux | TEC-119 e testes de plataforma |
+
+A matriz deverá ser mantida sincronizada com os IDs reais de testes e critérios de aceitação. Um ID não deverá ser considerado validado se o caso de teste correspondente ainda não estiver implementado ou definido.
+
+# 9. Definition of Ready
 
 Uma história poderá iniciar seu desenvolvimento quando:
 
@@ -737,8 +830,9 @@ Uma história poderá iniciar seu desenvolvimento quando:
 - As regras de negócio aplicáveis estiverem documentadas.
 - Os riscos de segurança relevantes estiverem identificados.
 - Os testes necessários puderem ser definidos.
+- Os critérios de aceitação possuírem rastreabilidade por CT quando aplicável.
 
-# 9. Definition of Done
+# 10. Definition of Done
 
 Uma história será considerada concluída quando:
 
@@ -751,18 +845,21 @@ Uma história será considerada concluída quando:
 - A documentação relacionada estiver consistente.
 - Não houver falhas críticas conhecidas.
 - Os critérios de compatibilidade aplicáveis forem atendidos.
+- Os casos de teste relacionados estiverem associados aos critérios de aceitação.
+- O comportamento em modo degradado estiver validado quando aplicável.
 
-# 10. Dependências e sequência de implementação
+# 11. Dependências e sequência de implementação
 
 A sequência principal de dependências é:
 
 1. US-001 estabelece a estrutura de execução.
 2. US-002 estabelece os serviços transversais.
-3. US-017 estabelece o controle de instância e ciclo de vida.
+3. US-017 implementa o bloqueio exclusivo e a identificação da instância.
 4. US-003 e US-004 estabelecem a persistência.
-5. Os módulos funcionais utilizam os contratos de execução e resultado.
-6. US-005 e US-006 utilizam os registros persistidos.
-7. US-014, US-015 e US-016 validam o conjunto implementado.
+5. US-017 conclui a recuperação do histórico e o modo degradado com a persistência disponível.
+6. Os módulos funcionais utilizam os contratos de execução e resultado.
+7. US-005 e US-006 utilizam os registros persistidos e exigem estado operacional NORMAL.
+8. US-014, US-015 e US-016 validam o conjunto implementado.
 
 Os módulos funcionais não deverão acessar diretamente o SQLite.
 
@@ -770,9 +867,11 @@ As operações de HISTORY não deverão criar novos registros de execução.
 
 A execução funcional deverá permanecer separada da persistência do histórico.
 
+Em modo degradado, os módulos funcionais poderão operar sem persistência, mas não poderão realizar gravações alternativas.
+
 Não existem dependências circulares planejadas.
 
-# 11. Itens fora do backlog do MVP
+# 12. Itens fora do backlog do MVP
 
 Os seguintes itens não fazem parte deste backlog:
 
@@ -791,19 +890,25 @@ Os seguintes itens não fazem parte deste backlog:
 
 Essas funcionalidades não deverão ser adicionadas às Sprints atuais.
 
-# 12. Estado do backlog
+# 13. Estado do backlog
 
 | Critério | Situação |
 |---|---|
 | Épicos | Definidos |
 | Histórias de usuário | Definidas |
 | Prioridades | Definidas |
-| Dependências | Mapeadas |
+| Dependências | Mapeadas e ajustadas |
 | Tarefas técnicas | Definidas |
 | Critérios de aceitação | Definidos |
+| Identificadores CT | Estruturados |
 | Planejamento de Sprints | Proposto |
 | Controle de instância | Incluído |
 | Recuperação de execuções | Incluída |
+| Modo degradado | Incluído |
 | Separação entre operação e persistência | Incluída |
 | Rastreabilidade | Estruturada |
-| Revisão cruzada | Pendente |
+| Revisão cruzada | Em andamento |
+
+---
+
+**Observação:** este backlog especifica o planejamento do MVP. A implementação das tarefas deverá ocorrer somente após a consolidação documental e a autorização explícita para iniciar o desenvolvimento.

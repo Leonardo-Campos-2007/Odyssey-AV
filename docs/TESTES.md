@@ -1,9 +1,9 @@
 # TESTES.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Escopo:** MVP  
-**Status:** Consolidado para revisão
+**Status:** Consolidado para revisão cruzada
 
 ---
 
@@ -17,6 +17,8 @@ Os testes deverão identificar falhas antes que uma funcionalidade seja consider
 
 A estratégia deverá contemplar os ambientes Windows e Linux, respeitando as particularidades de cada sistema operacional.
 
+Também deverá verificar o comportamento da aplicação em condições normais e degradadas, especialmente quando houver falha na recuperação ou persistência do histórico.
+
 # 2. Estratégia de testes
 
 O projeto utilizará principalmente:
@@ -26,6 +28,7 @@ O projeto utilizará principalmente:
 - **Testes funcionais da CLI:** verificam comandos, parâmetros, saídas e códigos de retorno.
 - **Testes de segurança:** verificam os controles definidos em `SEGURANCA.md`.
 - **Testes de persistência:** verificam integridade, transações e recuperação do histórico.
+- **Testes de instância:** verificam bloqueio exclusivo e identificação das instâncias.
 - **Testes de regressão:** verificam se alterações não quebraram funcionalidades existentes.
 
 A ferramenta principal será o `pytest`.
@@ -147,6 +150,9 @@ Os testes unitários deverão utilizar respostas simuladas quando não for neces
 | TU-HIST-013 | Registrar execução interrompida | Estado INTERRUPTED preservado |
 | TU-HIST-014 | Registrar execução | `instance_id` associado corretamente |
 | TU-HIST-015 | Sanitizar resumo e mensagem | Segredos não persistidos |
+| TU-HIST-016 | Consultar HISTORY em modo degradado | Operação recusada |
+| TU-HIST-017 | Exportar HISTORY em modo degradado | Operação recusada |
+| TU-HIST-018 | Tentar gravar histórico em modo degradado | Nenhuma gravação realizada |
 
 # 4. Testes de integração
 
@@ -167,6 +173,19 @@ Os testes de integração verificarão o funcionamento conjunto das camadas e do
 | TI-011 | Consultar histórico | Operação não cria novo AnalysisRun |
 | TI-012 | Encerrar execução normalmente | Estado final e duração persistidos |
 | TI-013 | Iniciar aplicação com registros RUNNING anteriores | Registros recuperados como INTERRUPTED |
+| TI-014 | Falhar durante a recuperação do histórico | Aplicação entra em modo degradado |
+| TI-015 | Executar FILE em modo degradado | Operação funcional permitida sem persistência |
+| TI-016 | Executar HASH em modo degradado | Operação funcional permitida sem persistência |
+| TI-017 | Executar NETWORK em modo degradado | Operação funcional permitida sem persistência |
+| TI-018 | Executar PASSWORD em modo degradado | Operação funcional permitida sem persistência |
+| TI-019 | Executar URL em modo degradado | Operação funcional permitida sem persistência |
+| TI-020 | Executar PROCESS em modo degradado | Operação funcional permitida sem persistência |
+| TI-021 | Executar HISTORY em modo degradado | Operação recusada com mensagem clara |
+| TI-022 | Corrigir indisponibilidade e reiniciar | Nova inicialização tenta recuperar o histórico |
+| TI-023 | Falhar durante transação de recuperação | Alterações incompletas revertidas quando aplicável |
+| TI-024 | Executar operação funcional em modo degradado | Resultado não apresentado como persistido |
+
+Os testes deverão confirmar que o modo degradado não altera as regras de segurança específicas dos módulos.
 
 # 5. Testes da CLI
 
@@ -197,8 +216,11 @@ Também deverão ser verificados:
 - Formatação dos resultados.
 - Saída textual e JSON.
 - Ausência de segredos nas saídas e nos erros.
+- Mensagens de inicialização em modo normal e degradado.
+- Indisponibilidade de comandos HISTORY em modo degradado.
+- Comunicação de que os resultados não serão persistidos.
 
-Os códigos de saída deverão seguir o contrato definido em `API.md`.
+Os códigos de saída deverão seguir o contrato definido em `API.md`, após sua validação cruzada.
 
 # 6. Testes de segurança
 
@@ -222,8 +244,14 @@ Os testes de segurança deverão verificar os controles definidos em `SEGURANCA.
 | TS-014 | Informar segredo em argumento ou entrada | Segredo não aparece nos dados persistidos |
 | TS-015 | Iniciar segunda instância | Operações funcionais impedidas |
 | TS-016 | Encerrar instância inesperadamente | Execuções anteriores recuperadas como INTERRUPTED |
-| TS-017 | Simular falha no SQLite | Resultado funcional preservado e falha de histórico comunicada |
+| TS-017 | Simular falha no SQLite durante operação | Resultado funcional preservado e falha de histórico comunicada |
 | TS-018 | Verificar saída JSON e CSV | Dados sensíveis excluídos |
+| TS-019 | Simular falha de recuperação do SQLite | Aplicação entra em modo degradado |
+| TS-020 | Consultar HISTORY em modo degradado | Operação recusada |
+| TS-021 | Executar módulo funcional em modo degradado | Nenhuma gravação no SQLite |
+| TS-022 | Verificar mensagens do modo degradado | Indisponibilidade do histórico informada |
+| TS-023 | Verificar tentativa de armazenamento alternativo | Nenhum armazenamento alternativo utilizado |
+| TS-024 | Verificar registros antigos após falha de recuperação | Nenhum registro apresentado como recuperado sem confirmação |
 
 # 7. Testes de banco de dados
 
@@ -243,6 +271,9 @@ Os testes deverão verificar a integridade e o comportamento do SQLite.
 | TB-010 | Verificar estados permitidos | Estados inválidos rejeitados pela camada responsável |
 | TB-011 | Verificar chave estrangeira | Restrição habilitada e aplicada |
 | TB-012 | Verificar índices previstos | Índices disponíveis no banco |
+| TB-013 | Verificar gravação em modo degradado | Nenhuma nova gravação realizada |
+| TB-014 | Verificar estado de registros após rollback | Estado efetivamente confirmado preservado |
+| TB-015 | Verificar acesso ao HISTORY em modo degradado | Consultas e exportações bloqueadas |
 
 # 8. Testes de transação e rollback
 
@@ -256,8 +287,14 @@ A persistência deverá manter a consistência dos dados.
 | TR-004 | Falha de conexão com banco | Erro tratado sem perda silenciosa de dados |
 | TR-005 | Falha ao finalizar execução | Estado e histórico tratados sem falsa confirmação |
 | TR-006 | Falha de persistência após operação funcional bem-sucedida | Resultado funcional não convertido indevidamente em FAILED |
+| TR-007 | Falha durante atualização de registros RUNNING | Transação de recuperação revertida quando aplicável |
+| TR-008 | Falha ao confirmar transação de recuperação | Aplicação entra em modo degradado |
+| TR-009 | Falha durante gravação em modo degradado | Nenhuma tentativa de gravação deverá ocorrer |
+| TR-010 | Recuperação concluída com sucesso | Registros anteriores atualizados conforme as regras de recuperação |
 
 A estratégia deverá distinguir a transação de persistência do resultado da operação funcional. Uma falha de gravação não deverá alterar retroativamente o resultado funcional.
+
+A recuperação deverá ser tratada como uma operação transacional. A aplicação somente poderá assumir o estado operacional `NORMAL` depois da confirmação de que a recuperação foi concluída.
 
 # 9. Testes de instância e concorrência
 
@@ -273,6 +310,7 @@ Deverão verificar:
 - Liberação do bloqueio após encerramento inesperado.
 - Recuperação de registros `RUNNING`.
 - Associação correta das execuções ao `instance_id`.
+- Manutenção do bloqueio durante o modo degradado.
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -283,6 +321,8 @@ Deverão verificar:
 | TCO-005 | Reiniciar após encerramento inesperado | Registros RUNNING anteriores marcados INTERRUPTED |
 | TCO-006 | Iniciar nova instância | Novo `instance_id` gerado |
 | TCO-007 | Consultar registros de instâncias diferentes | Associação preservada |
+| TCO-008 | Iniciar aplicação com falha na recuperação | Bloqueio permanece adquirido durante o modo degradado |
+| TCO-009 | Tentar iniciar segunda instância durante modo degradado | Segunda instância impedida de executar operações |
 
 Consultas e leituras concorrentes no SQLite poderão ser testadas isoladamente, sem violar a regra de instância única.
 
@@ -297,6 +337,7 @@ No MVP, a idempotência será avaliada principalmente em operações de consulta
 | TID-003 | Calcular hash do mesmo arquivo sem alterações | Mesmo resultado |
 | TID-004 | Exportar o mesmo histórico sem alterações | Conteúdo equivalente |
 | TID-005 | Consultar execução por identificador repetidamente | Mesmo registro retornado |
+| TID-006 | Repetir consulta HISTORY em modo degradado | Consulta permanece indisponível, sem tentativa de gravação |
 
 Não será exigida idempotência artificial para operações que geram uma nova execução a cada chamada.
 
@@ -318,6 +359,8 @@ Os testes de regressão deverão priorizar:
 - Proteção de dados sensíveis.
 - Bloqueio de instância.
 - Recuperação de execuções interrompidas.
+- Separação entre resultado funcional e persistência.
+- Entrada e saída do modo degradado.
 - Compatibilidade entre Windows e Linux.
 
 # 12. Dados de teste
@@ -334,6 +377,8 @@ Os testes deverão utilizar dados controlados e isolados.
 | Rede | Respostas simuladas de sucesso, falha e timeout |
 | Processos | Processos acessíveis e situações simuladas de indisponibilidade |
 | Histórico | Execuções SUCCESS, PARTIAL, FAILED e INTERRUPTED |
+| Recuperação | Bancos de teste com execuções RUNNING e cenários de falha transacional |
+| Modo degradado | Banco indisponível, somente leitura ou com falha simulada de recuperação |
 
 Não utilizar arquivos pessoais, senhas reais ou dados sensíveis nos testes.
 
@@ -355,6 +400,8 @@ Diretrizes:
 - Não utilizar senhas reais.
 - Isolar arquivos de configuração e variáveis de ambiente.
 - Evitar dependência da ordem de execução dos testes.
+- Simular falhas de leitura, escrita e transação do SQLite.
+- Garantir que testes de modo degradado não dependam de indisponibilidade real do banco de produção.
 
 # 14. Compatibilidade entre plataformas
 
@@ -372,6 +419,8 @@ Os testes deverão verificar os comportamentos que podem variar conforme o siste
 - Encerramento inesperado e liberação de bloqueio.
 - Operações de rede.
 - Manipulação de arquivos temporários.
+- Comportamento do SQLite diante de falhas.
+- Entrada e saída do modo degradado.
 
 Os testes deverão distinguir falhas da aplicação de limitações legítimas da plataforma ou das permissões do usuário.
 
@@ -385,6 +434,8 @@ Metas iniciais propostas:
 - Buscar pelo menos 80% de cobertura de código nas regras e serviços da aplicação.
 - Testar integralmente as operações críticas de segurança e persistência.
 - Evitar que linhas críticas de tratamento de erros permaneçam sem testes.
+- Cobrir os caminhos de inicialização normal e degradada.
+- Cobrir os caminhos de falha e rollback da recuperação.
 
 A porcentagem de cobertura não deverá ser utilizada isoladamente como indicador de qualidade. Os testes precisam verificar comportamentos e resultados relevantes.
 
@@ -414,10 +465,26 @@ Uma funcionalidade poderá ser considerada testada quando:
 6. Os testes de regressão relacionados forem aprovados.
 7. As particularidades de Windows e Linux forem verificadas, quando aplicáveis.
 8. Não houver falhas críticas conhecidas.
+9. O comportamento em modo degradado for validado quando a funcionalidade depender do histórico.
+10. A aplicação não apresentar resultados como persistidos sem confirmação efetiva do banco.
 
 A conclusão de uma tarefa no backlog deverá considerar os critérios de aceitação e os testes correspondentes.
 
-# 18. Estado do documento
+# 18. Rastreabilidade
+
+| Área | Documentos relacionados |
+|---|---|
+| Requisitos funcionais | `REQUISITOS.md` |
+| Regras de negócio | `REGRAS-DE-NEGOCIO.md` |
+| Arquitetura e camadas | `ARQUITETURA.md` |
+| Segurança e ameaças | `SEGURANCA.md` |
+| Entidades e persistência | `MODELO-DE-DADOS.md` |
+| Comandos e códigos de saída | `API.md` |
+| Tarefas e critérios de aceitação | `BACKLOG.md` |
+
+Os IDs dos testes deverão ser associados aos critérios de aceitação das tarefas correspondentes no backlog.
+
+# 19. Estado do documento
 
 | Critério | Situação |
 |---|---|
@@ -429,9 +496,14 @@ A conclusão de uma tarefa no backlog deverá considerar os critérios de aceita
 | Transações e rollback | Definidos |
 | Instância única e concorrência | Definidos |
 | Recuperação de execuções | Definida |
+| Modo degradado | Definido |
 | Idempotência | Definida |
 | Regressão | Definida |
 | Dados e isolamento | Definidos |
 | Compatibilidade Windows/Linux | Definida |
 | Cobertura | Meta inicial proposta |
-| Revisão cruzada | Pendente |
+| Revisão cruzada | Em andamento |
+
+---
+
+**Observação:** este documento especifica a estratégia de testes do MVP. A implementação dos testes será realizada após a consolidação documental e a autorização explícita para iniciar o desenvolvimento.

@@ -1,9 +1,9 @@
 # SEGURANCA.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Escopo:** MVP  
-**Status:** Consolidado para revisão
+**Status:** Consolidado para revisão cruzada
 
 ---
 
@@ -37,8 +37,8 @@ O MVP não será considerado um antivírus ou uma solução completa de proteç�
 
 O Odyssey AV deverá seguir os seguintes princípios:
 
-- **Menor privilégio:** utilizar somente as permissões necessárias para executar cada operação.
-- **Validação de entradas:** validar parâmetros e dados recebidos antes do processamento.
+- **Menor privilégio:** utilizar somente as permissões necessárias.
+- **Validação de entradas:** validar parâmetros e dados recebidos.
 - **Privacidade:** evitar armazenar informações sensíveis sem necessidade.
 - **Transparência:** informar quando uma operação realizar comunicação externa.
 - **Não destrutividade:** não modificar, excluir ou colocar arquivos em quarentena automaticamente.
@@ -46,6 +46,7 @@ O Odyssey AV deverá seguir os seguintes princípios:
 - **Tratamento seguro de erros:** não expor informações sensíveis em mensagens ou logs.
 - **Integridade:** preservar a consistência dos dados e resultados armazenados.
 - **Previsibilidade:** executar somente operações correspondentes à solicitação explícita do usuário.
+- **Disponibilidade controlada:** permitir operações funcionais em modo degradado sem ocultar a indisponibilidade do histórico.
 
 # 4. Segurança por módulo
 
@@ -55,7 +56,7 @@ O Odyssey AV deverá seguir os seguintes princípios:
 
 - Acesso indevido a arquivos.
 - Leitura de arquivos sem permissão.
-- Consumo excessivo de memória durante a análise.
+- Consumo excessivo de memória.
 - Interpretação incorreta de formatos.
 - Acesso involuntário a recursos especiais do sistema de arquivos.
 - Alteração ou desaparecimento do arquivo durante a análise.
@@ -91,9 +92,9 @@ A análise deverá trabalhar sobre o conteúdo do arquivo, sem executar seu cód
 - Utilizar SHA-256.
 - Calcular o hash a partir dos bytes reais do arquivo.
 - Validar o formato da referência fornecida.
-- Utilizar exclusivamente a referência informada pelo usuário para comparação.
-- Não manter uma base própria de hashes no MVP.
-- Não considerar uma correspondência como prova absoluta de segurança.
+- Utilizar exclusivamente a referência informada pelo usuário.
+- Não manter base própria de hashes no MVP.
+- Não considerar correspondência como prova absoluta de segurança.
 - Não modificar o arquivo original.
 
 A comparação deverá distinguir `MATCH`, `MISMATCH` e `NO_REFERENCE`.
@@ -110,7 +111,7 @@ A comparação deverá distinguir `MATCH`, `MISMATCH` e `NO_REFERENCE`.
 
 **Controles:**
 
-- Executar verificações somente quando solicitadas pelo usuário.
+- Executar verificações somente quando solicitadas.
 - Informar quando houver comunicação externa.
 - Aplicar timeout nas operações de rede.
 - Tratar falhas e indisponibilidade de serviços.
@@ -146,6 +147,8 @@ Operações locais não deverão iniciar comunicações externas implícitas.
 A execução do módulo poderá ser registrada, desde que sejam armazenados somente metadados operacionais e informações sanitizadas.
 
 A proteção deverá abranger também dados que permitam recuperar indiretamente o valor da senha.
+
+Em modo degradado, o módulo poderá executar normalmente, mas não deverá tentar persistir dados da operação.
 
 ## 4.5. URL — Análise de URL
 
@@ -194,6 +197,8 @@ A proteção deverá abranger também dados que permitam recuperar indiretamente
 - Exportação de informações inadequadas.
 - Inconsistência entre execuções e resultados.
 - Registros indefinidamente no estado `RUNNING`.
+- Recuperação incompleta de registros antigos.
+- Apresentação enganosa da disponibilidade do histórico.
 
 **Controles:**
 
@@ -205,9 +210,12 @@ A proteção deverá abranger também dados que permitam recuperar indiretamente
 - Exportar somente informações permitidas.
 - Preservar a integridade dos relacionamentos entre execuções e resultados.
 - Utilizar transações nas operações de persistência.
-- Identificar cada instância da aplicação por UUID.
-- Recuperar execuções anteriores que permaneceram em `RUNNING`, utilizando o estado `INTERRUPTED`.
-- Não gerar registros recursivos durante consultas e exportações do próprio histórico.
+- Identificar cada instância por UUID.
+- Recuperar execuções anteriores em `RUNNING`, utilizando `INTERRUPTED`.
+- Não gerar registros recursivos durante consultas e exportações.
+- Não disponibilizar consultas ou exportações quando a recuperação do histórico falhar.
+- Não realizar novas gravações no banco enquanto a aplicação estiver em modo degradado.
+- Informar explicitamente a indisponibilidade do histórico.
 
 # 5. Proteção de dados
 
@@ -232,7 +240,7 @@ O Odyssey AV deverá armazenar somente os dados necessários para seu funcioname
 - Conteúdo integral de arquivos analisados.
 - Segredos presentes nos argumentos.
 - Informações pessoais desnecessárias.
-- Dados sensíveis que não sejam necessários ao histórico.
+- Dados sensíveis desnecessários ao histórico.
 - Informações que permitam reconstruir indiretamente valores protegidos.
 
 ## 5.3. Sanitização
@@ -247,7 +255,7 @@ A sanitização deverá contemplar:
 - Dados estruturados dos resultados.
 - Informações utilizadas em relatórios.
 
-A sanitização não deverá ser tratada como substituta da minimização de dados: informações desnecessárias não deverão ser coletadas ou encaminhadas à persistência.
+A sanitização não deverá substituir a minimização de dados: informações desnecessárias não deverão ser coletadas ou encaminhadas à persistência.
 
 ## 5.4. Logs
 
@@ -273,7 +281,7 @@ A aplicação utilizará SQLite para armazenar o histórico local.
 - Respeitar o relacionamento entre `AnalysisRun` e `AnalysisResult`.
 - Evitar persistência de informações sensíveis.
 
-## 6.1. Falha de persistência
+## 6.1. Falha de persistência durante uma operação
 
 A falha ao registrar uma operação não deverá ser confundida com falha funcional.
 
@@ -298,6 +306,33 @@ Comunicação:
 A CLI deverá informar claramente as duas situações.
 
 O sistema não deverá afirmar que os dados foram registrados quando a persistência não tiver sido confirmada.
+
+## 6.2. Falha durante a recuperação do histórico
+
+A recuperação do histórico é uma condição necessária para iniciar o funcionamento normal da aplicação.
+
+Se o SQLite estiver indisponível ou ocorrer falha que impeça a conclusão da recuperação, a aplicação deverá entrar em modo degradado.
+
+O modo degradado deverá obedecer aos seguintes controles:
+
+1. O bloqueio exclusivo da aplicação deverá permanecer ativo.
+2. A falha deverá ser comunicada claramente ao usuário.
+3. As ferramentas FILE, HASH, NETWORK, PASSWORD, URL e PROCESS poderão continuar disponíveis.
+4. Nenhuma nova gravação no histórico deverá ser realizada durante a sessão.
+5. O HISTORY deverá ficar indisponível para consultas e exportações.
+6. Nenhuma execução deverá ser apresentada como persistida.
+7. A aplicação deverá informar que os resultados da sessão não serão armazenados.
+8. A falha de recuperação não deverá ser ocultada ou tratada como recuperação bem-sucedida.
+9. A aplicação não deverá utilizar armazenamento alternativo no MVP.
+10. A recuperação deverá ser tentada novamente em uma inicialização posterior.
+
+A aplicação não deverá tentar corrigir parcialmente o histórico e prosseguir como se a recuperação tivesse sido concluída.
+
+A transação de recuperação deverá garantir que alterações incompletas sejam revertidas quando aplicável.
+
+Se a transação falhar, os registros deverão permanecer conforme o estado efetivamente confirmado pelo banco.
+
+O modo degradado representa uma condição operacional limitada, e não uma garantia de integridade do histórico.
 
 # 7. Segurança de entradas e execução
 
@@ -349,11 +384,13 @@ O identificador deverá permitir distinguir registros de inicializações difere
 
 ## 9.3. Recuperação de execuções interrompidas
 
-Após obter o bloqueio exclusivo, a aplicação deverá verificar execuções anteriores que permaneceram no estado `RUNNING`.
+Após obter o bloqueio exclusivo, a aplicação deverá verificar execuções anteriores que permaneceram em `RUNNING`.
 
 As execuções pertencentes a instâncias anteriores deverão ser atualizadas para `INTERRUPTED`.
 
 O mecanismo deverá evitar que uma execução de outra instância ativa seja marcada incorretamente como interrompida.
+
+A recuperação deverá ser transacional.
 
 ## 9.4. Liberação do bloqueio
 
@@ -363,7 +400,31 @@ Em encerramentos inesperados, deverá ser utilizado um mecanismo do sistema oper
 
 O bloqueio não deverá depender de um arquivo de estado permanente que impeça a inicialização após uma falha.
 
-# 10. Matriz de ameaças
+# 10. Estado operacional da aplicação
+
+O estado operacional da aplicação deverá ser separado dos estados de execução armazenados no banco.
+
+| Estado | Significado |
+|---|---|
+| `NORMAL` | Recuperação concluída e persistência disponível |
+| `DEGRADED` | Recuperação do histórico falhou e a persistência está indisponível durante a sessão |
+
+Esses estados não substituem `RUNNING`, `SUCCESS`, `PARTIAL`, `FAILED` ou `INTERRUPTED`.
+
+## 10.1. Regras de segurança do modo degradado
+
+- O modo degradado deverá ser informado antes da execução dos comandos funcionais.
+- O usuário deverá saber que o histórico está indisponível.
+- As operações funcionais permitidas não poderão tentar gravar no SQLite.
+- O HISTORY deverá recusar consultas e exportações.
+- Os resultados não poderão ser apresentados como armazenados.
+- O bloqueio exclusivo deverá continuar ativo.
+- A aplicação não deverá tentar recuperar o banco em segundo plano no MVP.
+- A próxima inicialização deverá tentar novamente a recuperação.
+
+A execução funcional em modo degradado não deverá reduzir os controles de segurança próprios de cada módulo.
+
+# 11. Matriz de ameaças
 
 | ID | Ameaça | Impacto | Controle |
 |---|---|---|---|
@@ -377,22 +438,25 @@ O bloqueio não deverá depender de um arquivo de estado permanente que impeça 
 | SEC-008 | Interferência em processos | Alto | Permitir somente consulta e listagem |
 | SEC-009 | Interpretação incorreta de ameaças | Médio | Apresentar limitações e indicadores como suspeitas |
 | SEC-010 | Falha na persistência | Médio | Transações, tratamento de erros e separação do resultado funcional |
+| SEC-011 | Recuperação incompleta do histórico | Alto | Transação de recuperação e modo degradado |
+| SEC-012 | Histórico apresentado como disponível sem consistência | Alto | Bloquear HISTORY e novas gravações enquanto degradado |
 
-# 11. Tratamento de falhas de segurança
+# 12. Tratamento de falhas de segurança
 
 Quando uma operação apresentar falha relacionada à segurança, a aplicação deverá:
 
 1. Interromper a operação quando necessário.
 2. Evitar ações destrutivas ou efeitos colaterais.
 3. Apresentar uma mensagem compreensível.
-4. Registrar informações técnicas sem expor dados sensíveis.
+4. Registrar informações técnicas sem expor dados sensíveis, quando a persistência estiver disponível.
 5. Preservar os resultados que puderem ser armazenados com segurança.
 6. Distinguir limitações de acesso de resultados negativos de análise.
 7. Informar separadamente falhas funcionais e falhas de persistência.
+8. Comunicar o modo degradado quando a recuperação do histórico falhar.
 
 A aplicação não deverá apresentar uma análise incompleta como se tivesse sido concluída integralmente.
 
-# 12. Testes de segurança
+# 13. Testes de segurança
 
 O MVP deverá possuir testes para verificar os controles principais.
 
@@ -414,12 +478,18 @@ O MVP deverá possuir testes para verificar os controles principais.
 | ST-014 | Modificar ou remover arquivo durante leitura | Situação tratada sem resultado enganoso |
 | ST-015 | Iniciar segunda instância | Nova instância impedida de executar operações |
 | ST-016 | Encerrar instância inesperadamente | Execuções anteriores em `RUNNING` recuperadas como `INTERRUPTED` |
-| ST-017 | Simular falha no SQLite | Resultado funcional preservado e falha de histórico comunicada |
+| ST-017 | Simular falha no SQLite durante operação | Resultado funcional preservado e falha de histórico comunicada |
 | ST-018 | Informar segredo em argumento ou entrada | Segredo não aparece em histórico, logs ou mensagens persistidas |
+| ST-019 | Simular falha de leitura durante recuperação | Aplicação inicia em modo degradado |
+| ST-020 | Simular falha ao atualizar `RUNNING` para `INTERRUPTED` | Transação revertida quando aplicável e aplicação em modo degradado |
+| ST-021 | Executar módulo funcional em modo degradado | Operação permitida sem tentativa de persistência |
+| ST-022 | Consultar HISTORY em modo degradado | Operação recusada com mensagem clara |
+| ST-023 | Inicializar novamente após corrigir o SQLite | Recuperação executada antes do funcionamento normal |
+| ST-024 | Verificar registros após falha de recuperação | Nenhum registro apresentado como recuperado sem confirmação |
 
 Os testes deverão ser executados em ambientes Windows e Linux sempre que o comportamento depender de particularidades da plataforma.
 
-# 13. Limites de segurança do MVP
+# 14. Limites de segurança do MVP
 
 O Odyssey AV não deverá ser considerado um antivírus ou uma solução completa de proteção de endpoints.
 
@@ -440,7 +510,7 @@ A identificação de indicadores suspeitos não representa confirmação de malw
 
 A identificação de uma assinatura de arquivo também não representa validação integral de seu conteúdo ou garantia de segurança.
 
-# 14. Referências técnicas
+# 15. Referências técnicas
 
 As seguintes fontes deverão orientar a implementação e a revisão dos controles:
 
@@ -456,7 +526,18 @@ As seguintes fontes deverão orientar a implementação e a revisão dos control
 
 As referências deverão ser complementadas com links e versões específicas durante a implementação, quando as dependências e APIs utilizadas forem definidas.
 
-# 15. Estado do documento
+# 16. Rastreabilidade
+
+| Elemento | Referências relacionadas |
+|---|---|
+| Proteção de senhas | RF-016, RN-005 |
+| Recuperação de execuções | RN-009 |
+| Separação entre operação e persistência | RN-013 |
+| Modo degradado | RN-014, RNF-019 |
+| Integridade do histórico | DOM-011, ARC-013 |
+| Bloqueio de consultas HISTORY | RF-029, RF-030 |
+
+# 17. Estado do documento
 
 | Critério | Situação |
 |---|---|
@@ -467,10 +548,16 @@ As referências deverão ser complementadas com links e versões específicas du
 | Proteção de entradas | Definida |
 | Segurança da persistência | Definida |
 | Falha de persistência | Tratamento definido |
+| Falha de recuperação | Tratamento definido |
+| Modo degradado | Definido |
 | Permissões do sistema operacional | Definidas |
 | Instância única | Definida |
 | Recuperação de execuções | Definida |
 | Matriz de ameaças | Atualizada |
 | Testes de segurança | Especificados |
 | Limites do MVP | Definidos |
-| Revisão cruzada | Pendente |
+| Revisão cruzada | Em andamento |
+
+---
+
+**Observação final:** este documento especifica os controles de segurança do MVP. A implementação física dos mecanismos de persistência, bloqueio exclusivo, recuperação e modo degradado será realizada conforme o backlog, após a aprovação da documentação e autorização para iniciar o desenvolvimento.
