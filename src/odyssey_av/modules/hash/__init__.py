@@ -1,0 +1,1 @@
+"""Cálculo e comparação de SHA-256."""
