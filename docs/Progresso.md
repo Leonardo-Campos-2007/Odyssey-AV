@@ -17,7 +17,7 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 | Fase A: Integração com `main.py` e `odyssey status` | Concluída |
 | Fase B: `hash calculate` | Concluída |
 | Fase C: `hash compare` e guarda de `HISTORY` em `DEGRADED` | Concluída |
-| Fase D: PASSWORD, URL e FILE | Próxima (aguardando decisão D-01) |
+| Fase D: PASSWORD, URL e FILE | Próxima (sintaxe de PASSWORD definida em D-01) |
 | Fases E, F e G | Planejadas |
 
 **Suíte de testes:** 86 casos coletados, 85 aprovados e 1 pulado (teste de link simbólico, que exige privilégio no Windows).
@@ -171,11 +171,12 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 | ID | Decisão | Situação |
 |---|---|---|
 | D-01 | Sintaxe de PASSWORD: `generate` com `--length` (padrão 16) e flags `--no-*`, com todos os conjuntos incluídos por padrão. `evaluate` com entrada oculta, recusada quando `stdin` não é terminal. A senha gerada aparece no JSON, com aviso no `stderr` de que não é armazenada | Resolvido. Atualiza `API.md`, seção 4.4 |
-| D-04 | Campo `command` é normalizado, com nome do operação e nome do arquivo | Resolvido |
+| D-04 | Campo `command` é normalizado, com nome da operação e nome do arquivo | Resolvido |
 | D-05 | Só o nome do arquivo entra no `command`, sem diretórios, para não expor dados pessoais | Resolvido |
 | D-06 | `hash compare` exige `--reference`. `NO_REFERENCE` existe somente no `calculate` | Resolvido |
 | D-08 | Links simbólicos são recusados no HASH, como no FILE | Resolvido |
 | D-09 | `hash compare` retorna `1` em divergência. `hash calculate` retorna `0` e informa a divergência na saída | Resolvido (opção A). Altera o contrato do `API.md`, seção 6 |
+| D-10 | Incluir o código `1` para divergência do `hash compare` na tabela de códigos de saída | `API.md`, seção 6 |
 
 ---
 
@@ -185,7 +186,6 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 |---|---|---|
 | DOC-01 | Registrar a limitação de links simbólicos no Windows, porque `os.open` segue o link | `SEGURANCA.md` |
 | DOC-02 | Registrar que a gravação do resultado e do estado final ocorre em duas operações, sem transação única. Se a segunda falhar, o registro permanece `RUNNING` até a próxima inicialização | `SEGURANCA.md` e `MODELO-DE-DADOS.md` |
-| DOC-03 | Incluir o código `1` para divergência do `hash compare` na tabela de códigos de saída | `API.md`, seção 6 |
 | DOC-04 | Registrar a efetivação do comportamento de `odyssey --help` abrir o banco e o lock | `ARQUITETURA.md` |
 
 ---
@@ -194,11 +194,12 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 
 | ID | Assunto | Quando decidir |
 |---|---|---|
-| D-01 | Sintaxe de NETWORK e HISTORY (filtros, paginação, destino da exportação) | Antes das fases E e F |
 | D-02 | Alvos de conectividade, domínio DNS padrão e serviço de IP público | Antes da Fase E |
-| D-03 | Valores numéricos dos limites operacionais (RNF-015): tamanho de bloco, tempo de rede, quantidade de processos e de registros exportados | Ao implementar cada módulo |
+| D-03 | Valores numéricos dos limites operacionais (RNF-015): tamanho de bloco, tempo de rede, quantidade de processos e de registros exportados, e comprimento de senha (8 a 128, provisório) | Ao implementar cada módulo |
 | D-07 | Fixar `ubuntu-24.04` no CI e atualizar as actions | Quando for conveniente |
 | D-12 | Lista de testes de `DEGRADED` para FILE, NETWORK, PASSWORD, URL e PROCESS (TI-015 a TI-020) | Junto de cada módulo |
+| D-13 | Sintaxe de NETWORK e HISTORY (filtros, paginação, destino da exportação) | Antes das fases E e F |
+| D-14 | Critérios de avaliação de `password evaluate` (TU-PASS-004, "avaliação coerente") | Antes da implementação de `evaluate` |
 
 ---
 

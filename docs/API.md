@@ -189,6 +189,8 @@ O cálculo de hash poderá ser executado sem referência. A classificação `NO_
 
 O MVP não manterá uma base própria de hashes.
 
+O comando `compare` exige `--reference`. `NO_REFERENCE` existe somente no comando `calculate`, quando nenhuma referência é informada.
+
 ### 4.3. NETWORK — Diagnóstico de rede
 
 **Comando:**
@@ -393,12 +395,10 @@ Durante uma sessão iniciada em `NORMAL`, uma falha de gravação afetará somen
 
 ## 6. Códigos de saída
 
-A CLI deverá utilizar códigos de saída consistentes para permitir automação por scripts.
-
 | Código | Significado |
 |---|---|
 | `0` | Operação funcional concluída com sucesso e persistência confirmada quando aplicável. |
-| `1` | Falha na operação funcional. |
+| `1` | Falha na operação funcional. Também retornado por `hash compare` quando o arquivo não confere com a referência. |
 | `2` | Uso inválido, argumento inválido ou entrada rejeitada antes da execução funcional. |
 | `3` | Operação funcional concluída com sucesso, mas o histórico não foi persistido, por falha de gravação em `NORMAL` ou por estar desabilitado em `DEGRADED`. |
 | `4` | Operação funcional parcialmente concluída. |
@@ -540,7 +540,7 @@ Os critérios de aceitação relacionados estão identificados como `CT-XXX` em 
 | Tratamento de erros | Definido |
 | Registro de execuções | Definido |
 | Proteção de senhas | Definida |
-| Limites operacionais | Política definida; valores pendentes |
+| Limites operacionais | Política definida; valores pendentes (D-03), incluindo limites provisórios de comprimento de senha (8 a 128) |
 | Sintaxe específica de opções NETWORK e HISTORY | Refinamento técnico pendente, sem alteração dos requisitos funcionais aprovados |
 | Sintaxe comum de saída JSON e limites de listagem/exportação | Refinamento técnico pendente |
 | Rastreabilidade | Referências revisadas e alinhadas com os requisitos, regras, backlog e testes |
