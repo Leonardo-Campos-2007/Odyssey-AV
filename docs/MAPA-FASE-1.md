@@ -1,9 +1,9 @@
 # MAPA-FASE-1.md
 
-**Projeto:** Odyssey AV  
-**Versão:** 2.0  
-**Escopo:** MVP  
-**Status:** Consolidado para revisão
+**Projeto:** Odyssey AV
+**Versão:** 2.1
+**Escopo:** MVP
+**Status:** Consolidado após revisão cruzada
 
 ---
 
@@ -36,7 +36,6 @@ odyssey-av/
 ├── .gitignore
 │
 ├── docs/
-│   ├── README.md
 │   ├── REQUISITOS.md
 │   ├── REGRAS-DE-NEGOCIO.md
 │   ├── ARQUITETURA.md
@@ -668,4 +667,4 @@ Esses pontos não autorizam a inclusão de funcionalidades novas no MVP.
 | Configuração TOML | Definida |
 | Dependências entre camadas | Definidas |
 | Implementação incremental | Planejada |
-| Revisão cruzada | Pendente |
+| Revisão cruzada | Concluída |

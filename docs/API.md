@@ -79,7 +79,7 @@ odyssey hash calculate --help
 
 A CLI deverá apresentar resultados de maneira legível no terminal.
 
-Quando aplicável, poderá oferecer saída estruturada em JSON por meio de uma opção comum, como `--output json`.
+Quando aplicável, poderá oferecer saída estruturada em JSON. A forma comum `--output json` permanece uma proposta de sintaxe, não um requisito aprovado; a escolha da opção comum e dos comandos que a aceitam é refinamento técnico pendente.
 
 A saída textual será o formato padrão.
 
@@ -203,6 +203,8 @@ odyssey network diagnose
 - Consulta DNS.
 - Consulta opcional de IP público.
 
+O contrato aprovado define o comando e os tipos de verificação, mas ainda não define flags, argumentos posicionais, alvos de conectividade, domínio padrão para DNS ou serviço de IP público. Esses detalhes deverão ser consolidados antes da implementação para que chamadas equivalentes tenham comportamento compatível.
+
 **Comportamento:**
 
 - Executar somente verificações previstas e explicitamente solicitadas.
@@ -231,6 +233,8 @@ odyssey password evaluate
 - Gerar senhas utilizando fonte aleatória criptograficamente segura.
 - Permitir configurar comprimento e conjuntos de caracteres.
 - Avaliar localmente características básicas de uma senha.
+
+O contrato aprovado não define nomes de opções, comprimento padrão, conjuntos de caracteres habilitados por padrão nem regras de composição. Esses detalhes deverão ser consolidados antes da implementação. A avaliação continuará interativa e sem eco, conforme as regras de segurança abaixo.
 
 A senha avaliada deverá ser recebida de maneira que não seja exposta em argumentos visíveis do processo ou no histórico do terminal. O mecanismo de entrada deverá ser interativo e ocultar a digitação quando aplicável.
 
@@ -322,6 +326,8 @@ odyssey history export --format csv
 - Estado da execução.
 - Identificador da execução.
 
+`history show` recebe o identificador como argumento posicional; `history export` aceita `--format` com `json` ou `csv`. A sintaxe dos filtros de listagem/exportação, paginação, limites padrão e destino do arquivo exportado ainda não está definida e deverá ser consolidada antes da implementação.
+
 **Comportamento:**
 
 - Consultar execuções registradas.
@@ -406,7 +412,7 @@ Quando mais de uma condição ocorrer, a CLI deverá aplicar a seguinte precedê
 1. **Código 2 — Entrada ou uso inválido:** utilizado quando a operação não puder ser iniciada devido a argumentos ou entradas inválidas.
 2. **Código 1 — Falha funcional:** utilizado quando a operação funcional falhar, mesmo que também ocorra falha na persistência do histórico.
 3. **Código 4 — Resultado parcial:** utilizado quando a operação produzir resultado parcial, mesmo que também ocorra falha na persistência do histórico.
-4. **Código 3 — Falha de persistência:** utilizado quando a operação funcional for concluída com sucesso, mas seu registro no histórico falhar.
+4. **Código 3 — Histórico não persistido:** utilizado quando a operação funcional for concluída com sucesso, mas o histórico não estiver disponível: por falha de gravação em `NORMAL` ou por gravações desabilitadas em `DEGRADED`.
 5. **Código 0 — Sucesso:** utilizado quando a operação funcional for concluída com sucesso e a persistência for confirmada, quando aplicável.
 
 ### 6.2. Matriz de decisão
@@ -425,7 +431,7 @@ Para comandos HISTORY, que não geram novos registros `AnalysisRun`, falhas de c
 
 A saída deverá preservar as informações sobre ambas as situações quando houver falha funcional e falha de persistência simultâneas.
 
-Os códigos acima constituem o contrato proposto para o MVP e deverão ser verificados nos testes da CLI.
+Os códigos acima constituem o contrato definido para o MVP e deverão ser verificados nos testes da CLI.
 
 ## 7. Tratamento de erros
 
@@ -517,7 +523,7 @@ A rastreabilidade específica entre requisitos, regras, critérios de aceitaçã
 - `BACKLOG.md`
 - `TESTES.md`
 
-Os critérios de aceitação deverão receber identificadores próprios `CT-XXX` durante a consolidação do backlog.
+Os critérios de aceitação relacionados estão identificados como `CT-XXX` em `BACKLOG.md`.
 
 ## 12. Estado do documento
 
@@ -526,12 +532,14 @@ Os critérios de aceitação deverão receber identificadores próprios `CT-XXX`
 | Organização dos comandos | Definida |
 | Contratos funcionais | Definidos |
 | Saída textual e JSON | Definida em nível conceitual |
-| Códigos de saída | Definidos como proposta documental |
-| Precedência dos códigos | Definida como proposta documental |
+| Códigos de saída | Definidos para o MVP |
+| Precedência dos códigos | Definida para o MVP |
 | Tratamento de erros | Definido |
 | Registro de execuções | Definido |
 | Proteção de senhas | Definida |
 | Limites operacionais | Política definida; valores pendentes |
+| Sintaxe específica de opções NETWORK, PASSWORD e HISTORY | Refinamento técnico pendente, sem alteração dos requisitos funcionais aprovados |
+| Sintaxe comum de saída JSON e limites de listagem/exportação | Refinamento técnico pendente |
 | Rastreabilidade | Referências revisadas e alinhadas com os requisitos, regras, backlog e testes |
 | Revisão cruzada | Concluída |
 

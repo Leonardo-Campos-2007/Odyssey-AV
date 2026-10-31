@@ -6,7 +6,7 @@ O **Odyssey AV** é um projeto de segurança da informação desenvolvido em Pyt
 
 O projeto está sendo desenvolvido de forma incremental, começando por um MVP com sete módulos funcionais. Sua arquitetura deverá permitir evolução futura, sem antecipar funcionalidades que não fazem parte do escopo atual.
 
-> **Status:** Em fase de documentação e planejamento do MVP. As funcionalidades descritas representam o escopo planejado e não devem ser consideradas implementadas.
+> **Status:** Fase 1 documental consolidada; a implementação do MVP ainda não foi iniciada. As funcionalidades descritas representam o escopo planejado e não devem ser consideradas implementadas.
 
 ---
 
