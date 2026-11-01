@@ -1,7 +1,7 @@
 # SEGURANCA.md
 
 **Projeto:** Odyssey AV  
-**Versão:** 2.2<br>
+**Versão:** 2.3<br>
 **Escopo:** MVP  
 **Status:** Consolidado após revisão cruzada
 
@@ -75,6 +75,12 @@ O Odyssey AV deverá seguir os seguintes princípios:
 - Não modificar o conteúdo dos arquivos.
 - Identificar limitações de formatos não suportados.
 - Não apresentar identificação de assinatura como prova de segurança.
+- Abrir o arquivo somente para leitura, sem nenhum modo de escrita.
+- Verificar o tipo do arquivo pelo descritor aberto (`os.fstat`) antes de qualquer leitura de conteúdo.
+- Comparar o número de bytes lidos com o tamanho informado pelo `fstat`. Divergência gera erro de alteração durante a leitura, sem resultado enganoso.
+- Ler apenas o cabeçalho necessário para identificar o formato, com limite de bytes definido na implementação.
+
+As proteções contra alteração e exclusão de arquivos estão detalhadas na seção 4.8.
 
 A análise deverá trabalhar sobre o conteúdo do arquivo, sem executar seu código ou conteúdo incorporado.
 
@@ -216,6 +222,38 @@ Em modo degradado, o módulo poderá executar normalmente, mas não deverá tent
 - Não disponibilizar consultas ou exportações quando a recuperação do histórico falhar.
 - Não realizar novas gravações no banco enquanto a aplicação estiver em modo degradado.
 - Informar explicitamente a indisponibilidade do histórico.
+
+## 4.8. Proteção contra alteração e exclusão de arquivos
+
+**Princípio:** a análise de arquivos é somente leitura. Nenhum módulo do Odyssey AV pode modificar ou excluir o arquivo analisado, nem o diretório que o contém (RN-001, RF-029).
+
+**Principais riscos:**
+
+- Alteração acidental do conteúdo por abertura em modo de escrita.
+- Exclusão acidental por chamada indevida de remoção de arquivos.
+- Leitura de um arquivo diferente do pretendido, por meio de link simbólico.
+- Alteração do arquivo durante a leitura, por outro processo.
+- Análise de bancos ou arquivos internos do próprio aplicativo.
+
+**Controles obrigatórios:**
+
+- Abrir o arquivo somente para leitura, sem nenhum modo de escrita (`O_RDONLY` ou `"rb"`).
+- Verificar o tipo do arquivo pelo descritor aberto (`os.fstat`) antes de qualquer leitura de conteúdo.
+- Rejeitar links simbólicos e tratar a abertura sem seguir o link, quando a plataforma permitir (`O_NOFOLLOW`).
+- Comparar o número de bytes lidos com o tamanho informado pelo `fstat`. Divergência gera erro de alteração durante a leitura, sem resultado enganoso.
+- Não utilizar, no pacote de análise, chamadas de exclusão (`os.remove`, `os.unlink`, `os.rmdir`, `shutil.rmtree`) nem abertura em modo de escrita.
+- Recusar caminhos localizados no diretório de dados do próprio aplicativo, que contém o banco de histórico e o arquivo de bloqueio.
+
+**Verificação:**
+
+- Teste de integridade (ST-026): hash, tamanho e data de modificação do arquivo são iguais antes e depois da análise.
+- Teste de varredura estática (ST-027): o código de `modules/` não contém chamadas de exclusão nem modos de escrita sobre o arquivo analisado.
+- Teste de caminho sensível (ST-028): a análise do banco de histórico é recusada antes de qualquer leitura de conteúdo.
+
+**Limitações conhecidas:**
+
+- O horário de último acesso (`atime`) pode ser atualizado pelo sistema operacional durante a leitura. Esse comportamento não altera o conteúdo do arquivo e não é controlado pelo aplicativo.
+- No Windows, `os.open` segue links simbólicos. A proteção depende da verificação de tipo pelo descritor, registrada em DOC-01.
 
 # 5. Proteção de dados
 
@@ -444,6 +482,9 @@ A execução funcional em modo degradado não deverá reduzir os controles de se
 | SEC-010 | Falha na persistência | Médio | Transações, tratamento de erros e separação do resultado funcional |
 | SEC-011 | Recuperação incompleta do histórico | Alto | Transação de recuperação e modo degradado |
 | SEC-012 | Histórico apresentado como disponível sem consistência | Alto | Bloquear HISTORY e novas gravações enquanto degradado |
+| SEC-013 | Alteração acidental do arquivo analisado | Alto | Abertura somente leitura, verificação de tipo pelo descritor e teste de integridade (ST-026) |
+| SEC-014 | Exclusão acidental de arquivos pelo aplicativo | Alto | Proibição de chamadas de remoção no pacote de análise, verificada por varredura estática (ST-027) |
+| SEC-015 | Análise de arquivos internos do aplicativo | Médio | Recusa de caminhos no diretório de dados (ST-028) |
 
 # 12. Tratamento de falhas de segurança
 
@@ -490,6 +531,9 @@ O MVP deverá possuir testes para verificar os controles principais.
 | ST-022 | Consultar HISTORY em modo degradado | Operação recusada com mensagem clara |
 | ST-023 | Inicializar novamente após corrigir o SQLite | Recuperação executada antes do funcionamento normal |
 | ST-024 | Verificar registros após falha de recuperação | Nenhum registro apresentado como recuperado sem confirmação |
+| ST-026 | Analisar arquivo e comparar estado antes e depois | Hash, tamanho e data de modificação iguais; nenhuma alteração do arquivo |
+| ST-027 | Varrer o código de `modules/` em busca de chamadas de exclusão e modos de escrita | Nenhuma ocorrência fora de contextos permitidos |
+| ST-028 | Analisar o arquivo de histórico do próprio aplicativo | Operação recusada antes de qualquer leitura de conteúdo |
 
 Os testes deverão ser executados em ambientes Windows e Linux sempre que o comportamento depender de particularidades da plataforma.
 
@@ -509,6 +553,8 @@ O MVP não implementará:
 - Inteligência artificial para classificação de ameaças.
 - Varredura ou exploração de portas de terceiros.
 - Comunicação oculta em segundo plano.
+- Alteração do horário de último acesso (`atime`) pelo sistema operacional durante a leitura.
+- Garantia de integridade de arquivos modificados por outros processos durante a análise. O aplicativo detecta divergência de tamanho, mas não impede a alteração.
 
 A identificação de indicadores suspeitos não representa confirmação de malware.
 
@@ -561,6 +607,7 @@ As referências deverão ser complementadas com links e versões específicas du
 | Testes de segurança | Especificados |
 | Limites do MVP | Definidos |
 | Revisão cruzada | Concluída |
+| Proteção contra alteração e exclusão de arquivos | Definida (seção 4.8) |
 
 ---
 
