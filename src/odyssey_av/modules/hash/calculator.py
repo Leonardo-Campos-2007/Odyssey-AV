@@ -39,13 +39,17 @@ def calculate_sha256(path: Path, reference: str | None = None) -> HashResult:
     normalized = normalize_reference(reference)
     fd = _open_for_reading(path)
 
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise InvalidInputError("Somente arquivos regulares podem ser analisados.")
+    except BaseException:
+        os.close(fd)
+        raise
+
     digest = hashlib.sha256()
     size = 0
     with os.fdopen(fd, "rb") as handle:
-        info = os.fstat(handle.fileno())
-        if not stat.S_ISREG(info.st_mode):
-            raise InvalidInputError("Somente arquivos regulares podem ser analisados.")
-
         for chunk in iter(lambda: handle.read(CHUNK_SIZE), b""):
             digest.update(chunk)
             size += len(chunk)
