@@ -11,6 +11,7 @@ from odyssey_av.shared.logging.logger import configure_logging
 from odyssey_av.cli.commands.hash import hash_app
 from odyssey_av.cli.commands.history import history_app
 from odyssey_av.cli.commands.password import password_app
+from odyssey_av.cli.commands.url import url_app
 
 app = typer.Typer(
     name="odyssey",
@@ -58,3 +59,4 @@ app.command("status")(status_command)
 app.add_typer(hash_app, name="hash")
 app.add_typer(history_app, name="history")
 app.add_typer(password_app, name="password")
+app.add_typer(url_app, name="url")

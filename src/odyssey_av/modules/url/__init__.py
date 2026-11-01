@@ -1,0 +1,1 @@
+"""Análise estrutural local de URLs."""
