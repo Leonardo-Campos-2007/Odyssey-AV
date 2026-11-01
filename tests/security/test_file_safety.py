@@ -18,6 +18,7 @@ import odyssey_av.modules
 from odyssey_av.modules.hash.calculator import calculate_sha256
 from odyssey_av.shared.errors.handlers import InvalidInputError
 from odyssey_av.shared.validation.validators import ensure_outside_protected_dirs
+from odyssey_av.modules.file.analyzer import analyze_file
 
 pytestmark = pytest.mark.security
 
@@ -239,3 +240,9 @@ def test_st_028_link_para_o_banco_e_recusado(tmp_path: Path, diretorio_de_dados:
 
     with pytest.raises(InvalidInputError):
         ensure_outside_protected_dirs(atalho, [diretorio_de_dados])
+
+
+READ_ONLY_OPERATIONS = {
+    "hash calculate": calculate_sha256,
+    "file analyze": analyze_file,
+}

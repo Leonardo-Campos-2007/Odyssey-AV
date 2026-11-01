@@ -1,0 +1,1 @@
+"""Análise estrutural de arquivos."""
