@@ -17,8 +17,8 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 | Fase A: Integração com `main.py` e `odyssey status` | Concluída |
 | Fase B: `hash calculate` | Concluída |
 | Fase C: `hash compare` e guarda de `HISTORY` em `DEGRADED` | Concluída |
-| Fase D: PASSWORD, URL e FILE | Próxima (sintaxe de PASSWORD definida em D-01) |
-| Fases E, F e G | Planejadas |
+| Fase D: PASSWORD (`generate` e `evaluate`) | Concluída |
+| Fase E: URL e FILE | Próximas |
 
 **Suíte de testes:** 86 casos coletados, 85 aprovados e 1 pulado (teste de link simbólico, que exige privilégio no Windows).
 
@@ -177,6 +177,7 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 | D-08 | Links simbólicos são recusados no HASH, como no FILE | Resolvido |
 | D-09 | `hash compare` retorna `1` em divergência. `hash calculate` retorna `0` e informa a divergência na saída | Resolvido (opção A). Altera o contrato do `API.md`, seção 6 |
 | D-10 | Incluir o código `1` para divergência do `hash compare` na tabela de códigos de saída | `API.md`, seção 6 |
+| D-11 | Critérios de `password evaluate`: pontuação por comprimento (0 a 2), por conjuntos presentes (0 a 4) e penalidade de 1 ponto para repetições ou sequências simples. Classificação em quatro níveis: muito fraca, fraca, razoável e forte | Resolvido. Penalidade de repetição equivale a descer um nível |
 
 ---
 
@@ -187,6 +188,9 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 | DOC-01 | Registrar a limitação de links simbólicos no Windows, porque `os.open` segue o link | `SEGURANCA.md` |
 | DOC-02 | Registrar que a gravação do resultado e do estado final ocorre em duas operações, sem transação única. Se a segunda falhar, o registro permanece `RUNNING` até a próxima inicialização | `SEGURANCA.md` e `MODELO-DE-DADOS.md` |
 | DOC-04 | Registrar a efetivação do comportamento de `odyssey --help` abrir o banco e o lock | `ARQUITETURA.md` |
+| DOC-05 | Registrar em `SEGURANCA.md` que a senha permanece em memória até o coletor de lixo liberar a string, pois Python não permite apagá-la de forma garantida | `SEGURANCA.md` |
+| DOC-06 | Registrar em `SEGURANCA.md` e `API.md` que caracteres fora dos quatro conjuntos (espaços, acentos) não pontuam na avaliação | `SEGURANCA.md` e `API.md` |
+| DOC-07 | Registrar que `password evaluate` depende de terminal interativo, e que os testes simulam o terminal, sem cobrir a digitação oculta real | `TESTES.md` |
 
 ---
 
@@ -199,7 +203,7 @@ Este documento registra o que já foi implementado, testado e validado, e descre
 | D-07 | Fixar `ubuntu-24.04` no CI e atualizar as actions | Quando for conveniente |
 | D-12 | Lista de testes de `DEGRADED` para FILE, NETWORK, PASSWORD, URL e PROCESS (TI-015 a TI-020) | Junto de cada módulo |
 | D-13 | Sintaxe de NETWORK e HISTORY (filtros, paginação, destino da exportação) | Antes das fases E e F |
-| D-14 | Critérios de avaliação de `password evaluate` (TU-PASS-004, "avaliação coerente") | Antes da implementação de `evaluate` |
+
 
 ---
 
