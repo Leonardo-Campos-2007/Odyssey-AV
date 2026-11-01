@@ -1,0 +1,1 @@
+"""Geração e avaliação local de senhas."""
