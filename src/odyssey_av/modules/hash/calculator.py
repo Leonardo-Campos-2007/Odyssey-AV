@@ -1,24 +1,26 @@
-"""Cálculo e comparação de SHA-256 em blocos (RF-005 a RF-008, RN-002, RN-004)."""
+"""Cálculo e comparação de SHA-256 em blocos (RF-005 a RF-008, RN-002, RN-004).
+
+A abertura do arquivo usa o módulo compartilhado de abertura segura, que verifica
+o tipo com lstat antes de abrir e com fstat no descritor aberto (SEGURANCA.md, 4.8).
+"""
 
 from __future__ import annotations
 
-import errno
 import hashlib
 import os
 import re
-import stat
 from dataclasses import dataclass
 from pathlib import Path
 
 from odyssey_av.domain.enums import ComparisonStatus
+from odyssey_av.infrastructure.filesystem.safe_open import open_regular_file
 from odyssey_av.shared.errors.handlers import InvalidInputError, OdysseyError
 
 # Tamanho do bloco de leitura. O limite operacional definitivo ainda está pendente (RNF-015).
 CHUNK_SIZE = 1024 * 1024
 
 _SHA256_PATTERN = re.compile(r"[0-9a-fA-F]{64}")
-_O_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
-_O_BINARY = getattr(os, "O_BINARY", 0)
+ALTERED_MESSAGE = "O arquivo foi alterado durante a leitura."
 
 
 @dataclass(frozen=True)
@@ -34,28 +36,20 @@ def calculate_sha256(path: Path, reference: str | None = None) -> HashResult:
     """Calcula o SHA-256 dos bytes do arquivo e, se houver, compara com a referência.
 
     O arquivo é aberto somente para leitura e processado em blocos. Diretórios,
-    dispositivos, sockets, pipes e links simbólicos são recusados.
+    dispositivos, sockets, pipes e links simbólicos são recusados antes da abertura.
     """
     normalized = normalize_reference(reference)
-    fd = _open_for_reading(path)
-
-    try:
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode):
-            raise InvalidInputError("Somente arquivos regulares podem ser analisados.")
-    except BaseException:
-        os.close(fd)
-        raise
+    opened = open_regular_file(path)
 
     digest = hashlib.sha256()
     size = 0
-    with os.fdopen(fd, "rb") as handle:
+    with os.fdopen(opened.fd, "rb") as handle:
         for chunk in iter(lambda: handle.read(CHUNK_SIZE), b""):
             digest.update(chunk)
             size += len(chunk)
 
-    if size != info.st_size:
-        raise OdysseyError("O arquivo foi alterado durante a leitura.")
+    if size != opened.size:
+        raise OdysseyError(ALTERED_MESSAGE)
 
     sha256 = digest.hexdigest()
     return HashResult(
@@ -65,19 +59,6 @@ def calculate_sha256(path: Path, reference: str | None = None) -> HashResult:
         comparison=_compare(sha256, normalized),
         reference=normalized,
     )
-
-
-def _open_for_reading(path: Path) -> int:
-    try:
-        return os.open(path, os.O_RDONLY | _O_NOFOLLOW | _O_BINARY)
-    except FileNotFoundError as exc:
-        raise InvalidInputError("Arquivo não encontrado.") from exc
-    except OSError as exc:
-        if exc.errno == errno.ELOOP:
-            raise InvalidInputError("Links simbólicos não são seguidos automaticamente.") from exc
-        raise InvalidInputError(
-            "Não foi possível abrir o arquivo. Verifique o caminho e as permissões."
-        ) from exc
 
 
 def normalize_reference(reference: str | None) -> str | None:
