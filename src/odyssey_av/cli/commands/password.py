@@ -30,7 +30,10 @@ from odyssey_av.modules.password.generator import (
 )
 from odyssey_av.shared.errors.handlers import ExitCode
 
-password_app = typer.Typer(help="Geração e avaliação de senhas.", add_completion=False)
+password_app = typer.Typer(
+    help="Gera senhas aleatórias e avalia a força de senhas digitadas.",
+    add_completion=False,
+)
 
 
 @password_app.command("generate")
@@ -45,7 +48,7 @@ def generate(
     no_digits: bool = typer.Option(False, "--no-digits", help="Remove dígitos."),
     no_symbols: bool = typer.Option(False, "--no-symbols", help="Remove símbolos."),
 ) -> None:
-    """Gera uma senha com fonte criptográfica. Ela não é armazenada pelo Odyssey AV."""
+    """Gera uma senha aleatória. A senha aparece na tela e não é armazenada pelo Odyssey AV."""
     app_ctx: AppContext = ctx.obj
     options = GenerationOptions(
         length=length,
@@ -69,7 +72,7 @@ def generate(
 
 @password_app.command("evaluate")
 def evaluate(ctx: typer.Context) -> None:
-    """Avalia uma senha digitada de forma oculta. A senha não é armazenada."""
+    """Avalia a força de uma senha, digitada de forma oculta. Nunca passe a senha como argumento."""
     if not _stdin_is_interactive():
         typer.echo(
             "Erro: password evaluate exige um terminal interativo. "

@@ -8,7 +8,10 @@ from odyssey_av.cli.context import AppContext
 from odyssey_av.domain.enums import OperationalState
 from odyssey_av.shared.errors.handlers import ExitCode
 
-history_app = typer.Typer(help="Consulta e exportação do histórico.", add_completion=False)
+history_app = typer.Typer(
+    help="Consulta do histórico de análises. Em definição: a consulta ainda não está disponível.",
+    add_completion=False,
+)
 
 DEGRADED_HISTORY_MESSAGE = (
     "Histórico indisponível nesta sessão: a recuperação falhou, "

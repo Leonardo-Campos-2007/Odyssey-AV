@@ -17,7 +17,10 @@ from odyssey_av.infrastructure.platform.instance_lock import default_lock_path
 from odyssey_av.modules.file.signatures import FORMAT_LABELS
 from odyssey_av.shared.errors.handlers import ExitCode
 
-file_app = typer.Typer(help="Análise de arquivos (somente leitura).", add_completion=False)
+file_app = typer.Typer(
+    help="Identifica o formato real de um arquivo pelo cabeçalho e confere com a extensão.",
+    add_completion=False,
+)
 
 NOTICE = (
     "Aviso: indicadores são sinais de atenção, não confirmação de segurança. "

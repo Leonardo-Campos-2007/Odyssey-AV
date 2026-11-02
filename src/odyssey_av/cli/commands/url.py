@@ -13,7 +13,10 @@ from odyssey_av.cli.context import AppContext
 from odyssey_av.cli.formatting import history_label
 from odyssey_av.shared.errors.handlers import ExitCode
 
-url_app = typer.Typer(help="Análise estrutural de URLs.", add_completion=False)
+url_app = typer.Typer(
+    help="Analisa a estrutura de uma URL e aponta sinais de atenção, sem acessar o endereço.",
+    add_completion=False,
+)
 
 NOTICE = (
     "Aviso: indicadores são sinais de atenção, não confirmação de ameaça. "
@@ -26,7 +29,13 @@ def analyze(
     ctx: typer.Context,
     url: str = typer.Argument(..., help="URL com esquema, por exemplo https://exemplo.com."),
 ) -> None:
-    """Analisa a estrutura da URL e aponta indicadores de atenção."""
+
+    """Identifica o formato real do arquivo pelo cabeçalho e compara com a extensão.
+
+Apenas leitura: o arquivo não é executado nem modificado.
+"""
+
+    
     app_ctx: AppContext = ctx.obj
     result = run_url_analysis(app_ctx.session, url)
 

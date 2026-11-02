@@ -21,7 +21,10 @@ from odyssey_av.cli.context import AppContext
 from odyssey_av.domain.enums import ComparisonStatus, ExecutionStatus
 from odyssey_av.shared.errors.handlers import ExitCode
 
-hash_app = typer.Typer(help="Cálculo e comparação de SHA-256.", add_completion=False)
+hash_app = typer.Typer(
+    help="Calcula o SHA-256 de arquivos e compara com um valor conhecido.",
+    add_completion=False,
+)
 
 
 @hash_app.command("calculate")
@@ -34,7 +37,10 @@ def calculate(
         help="SHA-256 esperado. Opcional; sem ele, o resultado é NO_REFERENCE.",
     ),
 ) -> None:
-    """Calcula o SHA-256 do arquivo. Divergência informada não altera o código de saída."""
+    """Calcula o SHA-256 do arquivo. Com --reference, também confere se o valor coincide.
+
+Uma divergência é informada na saída, mas não altera o código de saída.
+"""
     app_ctx: AppContext = ctx.obj
     calculation = calculate_hash(app_ctx.session, path, reference)
     _emit(app_ctx, calculation, exit_code_for(calculation.outcome))
@@ -50,7 +56,13 @@ def compare(
         help="SHA-256 esperado. Obrigatório.",
     ),
 ) -> None:
-    """Verifica se o arquivo confere com a referência. Divergência retorna código 1."""
+
+    """Confere se o arquivo coincide com o SHA-256 informado.
+
+    Código 0 quando coincide, código 1 quando não coincide. Use em scripts.
+    """
+
+    
     app_ctx: AppContext = ctx.obj
     calculation = compare_hash(app_ctx.session, path, reference)
     _emit(app_ctx, calculation, _compare_exit_code(calculation))
