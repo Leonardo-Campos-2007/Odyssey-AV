@@ -27,22 +27,46 @@ ROOT_HELP = (
     "não confirmação de ameaça."
 )
 
+COMMAND_REFERENCE = [
+    f"[{theme.PRIMARY}]Todos os comandos[/]",
+    "",
+    f"  {theme.SYMBOLS.bullet} [{theme.SUCCESS}]odyssey status[/]",
+    f"  {theme.SYMBOLS.bullet} [{theme.SUCCESS}]odyssey hash calculate[/] ARQUIVO "
+    "(opcional: --reference SHA256)",
+    f"  {theme.SYMBOLS.bullet} [{theme.SUCCESS}]odyssey hash compare[/] ARQUIVO "
+    "--reference SHA256 (obrigatório)",
+    f"  {theme.SYMBOLS.bullet} [{theme.SUCCESS}]odyssey password generate[/] "
+    "(opcional: --length N, --no-upper, --no-digits, --no-symbols)",
+    f"  {theme.SYMBOLS.bullet} [{theme.SUCCESS}]odyssey password evaluate[/]",
+    f"  {theme.SYMBOLS.bullet} [{theme.SUCCESS}]odyssey url analyze[/] URL",
+    f"  {theme.SYMBOLS.bullet} [{theme.SUCCESS}]odyssey file analyze[/] ARQUIVO",
+    f"  {theme.SYMBOLS.bullet} [{theme.WARNING}]odyssey history list[/] "
+    f"[{theme.MUTED}](em implantação)[/]",
+]
+
+EXAMPLES = [
+    f"[{theme.PRIMARY}]Exemplos[/]",
+    "",
+    theme.example("odyssey status", "estado da sessão"),
+    theme.example("odyssey hash calculate arquivo.pdf", "SHA-256 do arquivo"),
+    theme.example(
+        "odyssey hash compare arquivo.pdf --reference SHA256_ESPERADO",
+        "confere com o valor",
+    ),
+    theme.example("odyssey password generate --length 24", "senha de 24 caracteres"),
+    theme.example("odyssey password evaluate", "senha digitada de forma oculta"),
+    theme.example(
+        'odyssey url analyze "https://exemplo.com/caminho"',
+        "sem acessar o site",
+    ),
+    theme.example("odyssey file analyze arquivo.exe", "formato pelo cabeçalho"),
+]
+
 EPILOG = "\n".join(
-    [
-        f"[{theme.PRIMARY}]Exemplos[/]",
-        "",
-        theme.example("odyssey status", "estado da sessão"),
-        theme.example("odyssey hash calculate arquivo.pdf", "SHA-256 do arquivo"),
-        theme.example(
-            "odyssey hash compare arquivo.pdf --reference SHA256_ESPERADO",
-            "confere com o valor",
-        ),
-        theme.example("odyssey password evaluate", "senha digitada de forma oculta"),
-        theme.example(
-            'odyssey url analyze "https://exemplo.com/caminho"',
-            "sem acessar o site",
-        ),
-        theme.example("odyssey file analyze arquivo.exe", "formato pelo cabeçalho"),
+    COMMAND_REFERENCE
+    + [""]
+    + EXAMPLES
+    + [
         "",
         f"[{theme.MUTED}]Use odyssey COMANDO --help para ver as opções de cada comando.[/]",
     ]

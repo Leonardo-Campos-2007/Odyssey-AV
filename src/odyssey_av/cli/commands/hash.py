@@ -22,8 +22,17 @@ from odyssey_av.domain.enums import ComparisonStatus, ExecutionStatus
 from odyssey_av.shared.errors.handlers import ExitCode
 
 hash_app = typer.Typer(
-    help="Calcula o SHA-256 de arquivos e compara com um valor conhecido.",
+    help=(
+        "[bold bright_cyan]SHA-256[/]: calcular e comparar\n\n"
+        "\b\n"
+        "[bold]calculate[/] calcula o valor. --reference é opcional.\n"
+        "[bold]compare[/] exige --reference SHA256.\n"
+        "\b\n"
+        "compare retorna 0 se coincide e 1 se não coincide."
+    ),
     add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True,
 )
 
 

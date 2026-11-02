@@ -31,8 +31,20 @@ from odyssey_av.modules.password.generator import (
 from odyssey_av.shared.errors.handlers import ExitCode
 
 password_app = typer.Typer(
-    help="Gera senhas aleatórias e avalia a força de senhas digitadas.",
+    help=(
+        "[bold bright_cyan]Senhas[/]: gerar e avaliar\n\n"
+        "\b\n"
+        "[bold]generate[/] aceita:\n"
+        "  --length N      comprimento de 8 a 128 (padrão: 16)\n"
+        "  --no-upper      remove letras maiúsculas\n"
+        "  --no-digits     remove dígitos\n"
+        "  --no-symbols    remove símbolos\n"
+        "\b\n"
+        "[bold]evaluate[/] pede a senha de forma oculta. Nunca passe a senha como argumento."
+    ),
     add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True,
 )
 
 

@@ -9,8 +9,14 @@ from odyssey_av.domain.enums import OperationalState
 from odyssey_av.shared.errors.handlers import ExitCode
 
 history_app = typer.Typer(
-    help="Consulta do histórico de análises. Em definição: a consulta ainda não está disponível.",
+    help=(
+        "[bold bright_cyan]Histórico[/]: consulta (em implantação)\n\n"
+        "\b\n"
+        "list ainda não consulta o histórico. A consulta com filtros entra na Fase F."
+    ),
     add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True,
 )
 
 DEGRADED_HISTORY_MESSAGE = (

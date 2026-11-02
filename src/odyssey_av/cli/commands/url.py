@@ -14,8 +14,15 @@ from odyssey_av.cli.formatting import history_label
 from odyssey_av.shared.errors.handlers import ExitCode
 
 url_app = typer.Typer(
-    help="Analisa a estrutura de uma URL e aponta sinais de atenção, sem acessar o endereço.",
+    help=(
+        "[bold bright_cyan]URL[/]: analisar sem acessar o endereço\n\n"
+        "\b\n"
+        "analyze exige a URL completa, com esquema (https://).\n"
+        "Credenciais e query não são gravados no histórico."
+    ),
     add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True,
 )
 
 NOTICE = (

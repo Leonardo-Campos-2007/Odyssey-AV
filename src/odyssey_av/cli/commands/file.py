@@ -18,8 +18,15 @@ from odyssey_av.modules.file.signatures import FORMAT_LABELS
 from odyssey_av.shared.errors.handlers import ExitCode
 
 file_app = typer.Typer(
-    help="Identifica o formato real de um arquivo pelo cabeçalho e confere com a extensão.",
+    help=(
+        "[bold bright_cyan]Arquivos[/]: identificar o formato real\n\n"
+        "\b\n"
+        "analyze lê apenas o cabeçalho, com no máximo 4 KiB.\n"
+        "Diretórios, links e arquivos especiais são recusados."
+    ),
     add_completion=False,
+    rich_markup_mode="rich",
+    no_args_is_help=True,
 )
 
 NOTICE = (
