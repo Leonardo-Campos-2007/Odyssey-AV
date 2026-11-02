@@ -57,13 +57,13 @@ pytest
 ## Uso rápido
 
 ```bash
-odyssey status                                  # estado da sessão
-odyssey hash calculate arquivo.pdf              # SHA-256 de um arquivo
-odyssey hash compare arquivo.pdf --reference <sha256>
-odyssey password generate                       # senha de 16 caracteres
-odyssey password evaluate                       # avalia uma senha digitada de forma oculta
-odyssey url analyze "https://exemplo.com/caminho"
-odyssey file analyze arquivo.exe                # identifica o formato pelo cabeçalho
+odyssey status                                       # estado da sessão
+odyssey hash calculate arquivo.pdf                   # SHA-256 de um arquivo
+odyssey hash compare arquivo.pdf --reference SHA256_ESPERADO
+odyssey password generate                            # senha de 16 caracteres
+odyssey password evaluate                            # avalia uma senha digitada de forma oculta
+odyssey url analyze "https://exemplo.com/caminho"    # análise estrutural, sem acessar o site
+odyssey file analyze arquivo.exe                     # identifica o formato pelo cabeçalho
 ```
 
 Opções globais, usadas antes do comando:
